@@ -121,9 +121,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          find dist -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.apk' -o -name '*-source.zip' \) -print > files.txt
-          cat files.txt
+          # Bundle names contain spaces ("Tapak Support_0.1.0..."), so collect them into an array, never word-split.
+          mapfile -d '' files < <(find dist -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.apk' -o -name '*-source.zip' \) -print0)
+          printf '%s\n' "${files[@]}"
+          (cd dist && find . -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.apk' -o -name '*-source.zip' \) -exec sha256sum {} + | sed 's# \./.*/# #') > SHA256SUMS.txt
           gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft \
             --title "Tapak Support ${GITHUB_REF_NAME}" \
             --notes "Thin desktop and Android clients for the Tapak Support Agent, built from this tag with Tauri 2 (Rust). Unsigned: on macOS right-click > Open; on Windows SmartScreen will warn. The app needs the server running (bun run dev) and its address set in the mode dialog." \
-            $(cat files.txt)
+            "${files[@]}" SHA256SUMS.txt
