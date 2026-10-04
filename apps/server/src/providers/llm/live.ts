@@ -60,7 +60,13 @@ export class AnthropicProvider implements LLMProvider {
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
       },
-      body: JSON.stringify({ model: this.model, max_tokens: 800, temperature: 0, system: req.system, messages: merged }),
+      body: JSON.stringify({
+        model: this.model,
+        max_tokens: 800,
+        temperature: 0,
+        system: req.system,
+        messages: merged,
+      }),
       signal,
     });
     if (!res.ok) throw new Error(`anthropic ${res.status}`);

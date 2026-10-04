@@ -1,4 +1,4 @@
-import { analyzeInput, type Intent } from "../../policy/input.ts";
+import { type Intent, analyzeInput } from "../../policy/input.ts";
 import { tokenize } from "../../retrieval/bm25.ts";
 import {
   type DecisionProvider,
@@ -61,7 +61,12 @@ export class MockJevProvider implements DecisionProvider {
 }
 
 function toUnit(v: unknown): number | undefined {
-  const n = typeof v === "number" ? v : typeof v === "object" && v ? Number((v as { score?: unknown }).score) : Number(v);
+  const n =
+    typeof v === "number"
+      ? v
+      : typeof v === "object" && v
+        ? Number((v as { score?: unknown }).score)
+        : Number(v);
   if (!Number.isFinite(n)) return undefined;
   if (n <= 1) return Math.max(0, n);
   if (n <= 10) return n / 10;
@@ -72,7 +77,8 @@ function toChoice(v: unknown): string | undefined {
   if (typeof v === "string") return v;
   if (v && typeof v === "object") {
     const o = v as Record<string, unknown>;
-    for (const k of ["choice", "answer", "value", "label"]) if (typeof o[k] === "string") return o[k] as string;
+    for (const k of ["choice", "answer", "value", "label"])
+      if (typeof o[k] === "string") return o[k] as string;
   }
   return undefined;
 }
@@ -114,9 +120,11 @@ export class JevProvider implements DecisionProvider {
           type: "choice",
           instructions: "Classify the customer's latest message for a shoe store support assistant.",
           criteria: {
-            policy_question: "Asks how a store policy works (returns, shipping, sizing, care, warranty, payment).",
+            policy_question:
+              "Asks how a store policy works (returns, shipping, sizing, care, warranty, payment).",
             order_status: "Asks where an order is or what state it is in.",
-            action_request: "Asks the store to do something: refund, cancel, exchange, change address, make an exception.",
+            action_request:
+              "Asks the store to do something: refund, cancel, exchange, change address, make an exception.",
             complaint: "Angry, threatening a chargeback or legal action, or a serious complaint.",
             out_of_scope: "Anything else, including medical, legal, or safety advice.",
           },
@@ -151,7 +159,8 @@ export class JevProvider implements DecisionProvider {
     );
     if (r.status !== "ok") return { status: r.status, latencyMs: r.latencyMs, error: r.error };
     const score = toUnit(r.answers.grounded);
-    if (score === undefined) return { status: "error", latencyMs: r.latencyMs, error: "unparseable JEV answer" };
+    if (score === undefined)
+      return { status: "error", latencyMs: r.latencyMs, error: "unparseable JEV answer" };
     return { status: "ok", score, latencyMs: r.latencyMs };
   }
 }

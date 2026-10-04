@@ -1,7 +1,7 @@
 // Deterministic post-LLM guard. Nothing the model produced reaches the customer without passing here.
-import { containsPii } from "../observability/redact.ts";
 import type { Final } from "../agent/schema.ts";
-import { extractOrderIds, type Intent } from "./input.ts";
+import { containsPii } from "../observability/redact.ts";
+import { type Intent, extractOrderIds } from "./input.ts";
 
 export type GuardEffect = "stripped" | "blocked" | "downgraded_to_clarify" | "escalated";
 export type GuardHit = { rule: string; effect: GuardEffect; detail?: string };
@@ -41,7 +41,11 @@ export function guardOutput(input: OutputGuardInput): { final: Final; hits: Guar
   const foreignIds = extractOrderIds(f.reply).filter((id) => id !== input.verifiedOrderId && !typed.has(id));
   const foreignTracking = (f.reply.match(TRACKING_RE) ?? []).filter((t) => t !== input.verifiedTracking);
   if (foreignIds.length || foreignTracking.length) {
-    hits.push({ rule: "unverified_order_data", effect: "blocked", detail: [...foreignIds, ...foreignTracking].join(",") });
+    hits.push({
+      rule: "unverified_order_data",
+      effect: "blocked",
+      detail: [...foreignIds, ...foreignTracking].join(","),
+    });
     return { final: blockedFinal(), hits };
   }
 
@@ -61,7 +65,11 @@ export function guardOutput(input: OutputGuardInput): { final: Final; hits: Guar
     if (input.intent === "order_status" && !isOrderAnswer && input.verifiedOrderId === null) {
       hits.push({ rule: "order_answer_unverified", effect: "downgraded_to_clarify" });
       return {
-        final: { ...clarifyFinal(), reply: "To check an order I need your order ID and the email used at checkout.", clarification_fields: ["order_id", "email"] },
+        final: {
+          ...clarifyFinal(),
+          reply: "To check an order I need your order ID and the email used at checkout.",
+          clarification_fields: ["order_id", "email"],
+        },
         hits,
       };
     }
@@ -85,7 +93,8 @@ export function clarifyFinal(): Final {
 function blockedFinal(): Final {
   return {
     type: "final",
-    reply: "I am not able to answer that reliably right now, so I have passed your message to our support team. They will reply within 1 business day.",
+    reply:
+      "I am not able to answer that reliably right now, so I have passed your message to our support team. They will reply within 1 business day.",
     action: "escalate",
     citations: [],
     confidence: 0,

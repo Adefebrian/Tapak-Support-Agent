@@ -3,7 +3,11 @@ import type { LLMProvider, LlmContext, LlmRequest, LlmResponse } from "./types.t
 
 function firstSentences(text: string, n: number): string {
   const body = text.replace(/^[^.]*\.\s*/, ""); // drop the "Title. " prefix added at chunking
-  const clean = body.replace(/\*\*/g, "").replace(/\s*\n\s*-\s*/g, " ").replace(/\s+/g, " ").trim();
+  const clean = body
+    .replace(/\*\*/g, "")
+    .replace(/\s*\n\s*-\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   const parts = clean.match(/[^.!?]+[.!?]/g) ?? [clean];
   return parts.slice(0, n).join(" ").trim();
 }
@@ -69,7 +73,11 @@ export function mockPolicy(ctx: LlmContext): Record<string, unknown> {
   }
 
   if (ctx.candidates.orderId && ctx.candidates.email && ctx.analysis.intent === "order_status") {
-    return { type: "tool", name: "get_order", args: { order_id: ctx.candidates.orderId, email: ctx.candidates.email } };
+    return {
+      type: "tool",
+      name: "get_order",
+      args: { order_id: ctx.candidates.orderId, email: ctx.candidates.email },
+    };
   }
 
   const top = ctx.hits[0];
@@ -103,7 +111,13 @@ export class MockLlm implements LLMProvider {
   readonly model = "mock-deterministic-v1";
   async complete(req: LlmRequest): Promise<LlmResponse> {
     const text = JSON.stringify(mockPolicy(req.context));
-    return { text, usage: { input: Math.ceil(JSON.stringify(req.messages).length / 4), output: Math.ceil(text.length / 4) } };
+    return {
+      text,
+      usage: {
+        input: Math.ceil(JSON.stringify(req.messages).length / 4),
+        output: Math.ceil(text.length / 4),
+      },
+    };
   }
 }
 

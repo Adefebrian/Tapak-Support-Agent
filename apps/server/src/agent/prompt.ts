@@ -30,7 +30,7 @@ Rules:
 
 export const PROMPT_TEMPLATES = {
   needOrderFields: (missing: string[]) =>
-    `To look up an order I need ${missing.map((f) => (f === "order_id" ? "your order ID (it looks like TPK-10001)" : "the email address used for the order")).join(" and ")}.`,
+    `To look up an order I need ${missing.map((f) => (f === "order_id" ? "your order ID (it starts with TPK- followed by 5 digits)" : "the email address used for the order")).join(" and ")}.`,
   notVerified: (left: number) =>
     `I could not verify an order with those details. Please check the order ID and the email used at checkout.${left > 0 ? ` You have ${left} attempt${left === 1 ? "" : "s"} left.` : ""}`,
   verifyLocked:
@@ -45,6 +45,8 @@ export const PROMPT_TEMPLATES = {
     "I could not find that in our help articles, so I do not want to guess. Could you rephrase or tell me more about what you need? I can also pass it to our support team.",
   fallback:
     "I am not able to answer that reliably right now, so I have passed your message to our support team. They will reply within 1 business day.",
+  boundary:
+    "I can only help with Tapak policies (returns, exchanges, shipping, sizing, care, warranty, payment) and with an order status once you share the order ID and the email used at checkout.",
   greeting:
     "Hi, I am the Tapak support assistant. I can explain our policies (returns, exchanges, shipping, sizing, care, warranty) and check an order status with your order ID and email.",
 };

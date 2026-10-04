@@ -40,28 +40,47 @@ export function extractEmails(text: string): string[] {
 }
 
 const INJECTION_PATTERNS: [string, RegExp][] = [
-  ["ignore_instructions", /\b(ignore|disregard|forget)\b.{0,30}\b(previous|above|prior|all|your)\b.{0,20}\b(instructions?|rules?|prompts?)\b/i],
+  [
+    "ignore_instructions",
+    /\b(ignore|disregard|forget)\b.{0,30}\b(previous|above|prior|all|your)\b.{0,20}\b(instructions?|rules?|prompts?)\b/i,
+  ],
   ["role_override", /\b(you are now|act as|pretend (to be|you are)|from now on you)\b/i],
-  ["system_prompt_probe", /\b(system prompt|developer message|hidden instructions?|reveal your (prompt|instructions))\b/i],
+  [
+    "system_prompt_probe",
+    /\b(system prompt|developer message|hidden instructions?|reveal your (prompt|instructions))\b/i,
+  ],
   ["mode_switch", /\b(developer mode|admin mode|debug mode|jailbreak|DAN)\b/],
-  ["judge_targeting", /\b(rate|score|classify|mark)\b.{0,30}\b(as safe|as low risk|score\s*0|0 risk|not escalat)/i],
+  [
+    "judge_targeting",
+    /\b(rate|score|classify|mark)\b.{0,30}\b(as safe|as low risk|score\s*0|0 risk|not escalat)/i,
+  ],
   ["tool_forcing", /\b(call|run|execute|invoke)\b.{0,20}\b(get_order|refund|cancel_order|tool|function)\b/i],
-  ["fake_authority", /\b(i am|this is) (an? )?(admin|administrator|developer|staff|manager|support agent|anthropic|openai)\b/i],
+  [
+    "fake_authority",
+    /\b(i am|this is) (an? )?(admin|administrator|developer|staff|manager|support agent|anthropic|openai)\b/i,
+  ],
 ];
 
 export function detectInjection(text: string): string[] {
   return INJECTION_PATTERNS.filter(([, re]) => re.test(text)).map(([name]) => name);
 }
 
-const HIGH_PRIORITY = /\b(chargeback|charge back|dispute (the|this|my) (charge|payment)|lawyer|legal action|sue|suing|court|police|consumer protection|ylki|scam|fraud|unacceptable|furious|ridiculous|worst (service|company|store)|never (buy|shop|order) (here|again|from you))\b/i;
-const MEDICAL = /\b(plantar|fasciitis|medical|doctor|podiatrist|orthopedic|orthotic|injur(y|ies|ed)|diabet(es|ic)|bunion|arthritis|pregnan(t|cy)|knee pain|back pain|heel pain|foot pain|therapy|prescription|swollen|allerg(y|ic))\b/i;
+const HIGH_PRIORITY =
+  /\b(chargeback|charge back|dispute (the|this|my) (charge|payment)|lawyer|legal action|sue|suing|court|police|consumer protection|ylki|scam|fraud|unacceptable|furious|ridiculous|worst (service|company|store)|never (buy|shop|order) (here|again|from you))\b/i;
+const MEDICAL =
+  /\b(plantar|fasciitis|medical|doctor|podiatrist|orthopedic|orthotic|injur(y|ies|ed)|diabet(es|ic)|bunion|arthritis|pregnan(t|cy)|knee pain|back pain|heel pain|foot pain|therapy|prescription|swollen|allerg(y|ic))\b/i;
 const LEGAL_SAFETY = /\b(is it (legal|safe) to|safety certified|toxic|chemical burn|catch fire|flammable)\b/i;
-const EXCEPTION = /\b(exception|make an exception|past (the )?30 days|after (the )?30 days|\d{2,3} days (ago|late)|over (the )?30 days|late return|bend the rule|just this once)\b/i;
-const ACTION_VERB = /\b(refund|cancel|change (my |the )?(delivery |shipping )?address|update (my |the )?address|exchange|swap|replace|replacement|return (it|them|this|these|my)|send (it|them) back|money back|reimburse|compensat)/i;
-const FIRST_PERSON_DEMAND = /\b(i want|i'd like|i would like|i need|please|can you|could you|i demand|give me|process|issue|start (a|my))\b/i;
-const ORDER_TALK = /\b(my order|my package|my parcel|my shoes|order status|where is|where's|track(ing)?|has(n't| not) arrived|not arrived|didn't arrive|still waiting|not (yet )?(here|received)|when will (it|my)|belum sampai|shipment|delivered\?)/i;
+const EXCEPTION =
+  /\b(exception|make an exception|past (the )?30 days|after (the )?30 days|\d{2,3} days (ago|late)|over (the )?30 days|late return|bend the rule|just this once)\b/i;
+const ACTION_VERB =
+  /\b(refund|cancel|change (my |the )?(delivery |shipping )?address|update (my |the )?address|exchange|swap|replace|replacement|return (it|them|this|these|my)|send (it|them) back|money back|reimburse|compensat)/i;
+const FIRST_PERSON_DEMAND =
+  /\b(i want|i'd like|i would like|i need|please|can you|could you|i demand|give me|process|issue|start (a|my))\b/i;
+const ORDER_TALK =
+  /\b(my order|my package|my parcel|my shoes|order status|where is|where's|track(ing)?|has(n't| not) arrived|not arrived|didn't arrive|still waiting|not (yet )?(here|received)|when will (it|my)|belum sampai|shipment|delivered\?)/i;
 const GREETING_ONLY = /^\s*(hi|hello|hey|halo|good (morning|afternoon|evening))[\s!.]*$/i;
-const NEGATIVE = /\b(angry|upset|terrible|awful|disappointed|frustrated|annoyed|horrible|garbage|trash|wtf)\b/i;
+const NEGATIVE =
+  /\b(angry|upset|terrible|awful|disappointed|frustrated|annoyed|horrible|garbage|trash|wtf)\b/i;
 
 export type InputAnalysis = {
   length: number;
@@ -90,7 +109,8 @@ export function analyzeInput(text: string): InputAnalysis {
   const hasActionVerb = ACTION_VERB.test(text);
   const actionRequested =
     policyException ||
-    (hasActionVerb && (FIRST_PERSON_DEMAND.test(text) || orderIds.length > 0 || /\bmy (order|shoes|pair)\b/i.test(text)));
+    (hasActionVerb &&
+      (FIRST_PERSON_DEMAND.test(text) || orderIds.length > 0 || /\bmy (order|shoes|pair)\b/i.test(text)));
   // A bare email or order ID is a verification follow-up, not a policy question (defect D-03).
   const orderTalk = ORDER_TALK.test(text) || orderIds.length > 0 || emails.length > 0;
 

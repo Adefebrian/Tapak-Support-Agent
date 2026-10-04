@@ -52,6 +52,7 @@ export function parseStep(text: string): { ok: true; step: Step } | { ok: false;
     return { ok: false, error: "response is not valid JSON" };
   }
   const r = StepSchema.safeParse(json);
-  if (!r.success) return { ok: false, error: r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
+  if (!r.success)
+    return { ok: false, error: r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
   return { ok: true, step: r.data };
 }

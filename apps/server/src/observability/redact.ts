@@ -14,13 +14,13 @@ export function redact(text: string): string {
   const keep: string[] = [];
   const masked = text.replace(ORDER_ID, (m) => {
     keep.push(m);
-    return `\u0000${keep.length - 1}\u0000`;
+    return `\uE000${keep.length - 1}\uE000`;
   });
   return masked
     .replace(EMAIL, "[email]")
     .replace(ADDRESS, "[address]")
     .replace(PHONE, (m) => (m.replace(/\D/g, "").length >= 9 ? "[phone]" : m))
-    .replace(/\u0000(\d+)\u0000/g, (_, i) => keep[Number(i)] ?? "");
+    .replace(/\uE000(\d+)\uE000/g, (_, i) => keep[Number(i)] ?? "");
 }
 
 export function redactDeep<T>(value: T): T {

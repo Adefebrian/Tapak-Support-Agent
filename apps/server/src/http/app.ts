@@ -36,7 +36,13 @@ export class RateLimiter {
   }
 }
 
-export type AppDeps = { db: Database; index: Bm25Index; llm: LLMProvider; decision: DecisionProvider; rateLimiter?: RateLimiter };
+export type AppDeps = {
+  db: Database;
+  index: Bm25Index;
+  llm: LLMProvider;
+  decision: DecisionProvider;
+  rateLimiter?: RateLimiter;
+};
 
 const TAURI_ORIGINS = ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"];
 
@@ -72,7 +78,12 @@ export function createApp(deps: AppDeps) {
     } catch {
       db = "error";
     }
-    return c.json({ status: db === "ok" ? "ok" : "degraded", db, llm: `${deps.llm.name}:${deps.llm.model}`, jev: deps.decision.name });
+    return c.json({
+      status: db === "ok" ? "ok" : "degraded",
+      db,
+      llm: `${deps.llm.name}:${deps.llm.model}`,
+      jev: deps.decision.name,
+    });
   });
 
   api.post("/sessions", (c) => c.json({ session_id: createSession(deps.db) }, 201));
@@ -89,7 +100,10 @@ export function createApp(deps: AppDeps) {
     const parsed = MessageBody.safeParse(body);
     if (!parsed.success) {
       const tooLong = parsed.error.issues.some((i) => i.code === "too_big");
-      return c.json({ error: tooLong ? "message_too_long" : "invalid_message", max_chars: config.limits.maxMessageChars }, tooLong ? 413 : 400);
+      return c.json(
+        { error: tooLong ? "message_too_long" : "invalid_message", max_chars: config.limits.maxMessageChars },
+        tooLong ? 413 : 400,
+      );
     }
     if (!limiter.allow(id.data)) return c.json({ error: "rate_limited", retry_after_s: 60 }, 429);
 
@@ -107,9 +121,19 @@ export function createApp(deps: AppDeps) {
     const id = SessionId.safeParse(c.req.param("id"));
     if (!id.success || !sessionExists(deps.db, id.data)) return c.json({ error: "session_not_found" }, 404);
     const rows = deps.db
-      .query("SELECT role, content_redacted AS content, action, meta_json, created_at FROM messages WHERE session_id = ? ORDER BY id")
-      .all(id.data) as { role: string; content: string; action: string | null; meta_json: string | null; created_at: string }[];
-    return c.json({ messages: rows.map(({ meta_json, ...r }) => ({ ...r, meta: meta_json ? JSON.parse(meta_json) : null })) });
+      .query(
+        "SELECT role, content_redacted AS content, action, meta_json, created_at FROM messages WHERE session_id = ? ORDER BY id",
+      )
+      .all(id.data) as {
+      role: string;
+      content: string;
+      action: string | null;
+      meta_json: string | null;
+      created_at: string;
+    }[];
+    return c.json({
+      messages: rows.map(({ meta_json, ...r }) => ({ ...r, meta: meta_json ? JSON.parse(meta_json) : null })),
+    });
   });
 
   api.get("/sessions", (c) => {
@@ -126,7 +150,11 @@ export function createApp(deps: AppDeps) {
     const status = c.req.query("status");
     const rows = status
       ? deps.db.query("SELECT * FROM escalations WHERE status = ? ORDER BY created_at DESC").all(status)
-      : deps.db.query("SELECT * FROM escalations ORDER BY CASE status WHEN 'resolved' THEN 1 ELSE 0 END, CASE priority WHEN 'high' THEN 0 ELSE 1 END, created_at DESC").all();
+      : deps.db
+          .query(
+            "SELECT * FROM escalations ORDER BY CASE status WHEN 'resolved' THEN 1 ELSE 0 END, CASE priority WHEN 'high' THEN 0 ELSE 1 END, created_at DESC",
+          )
+          .all();
     return c.json({ escalations: rows });
   });
 
@@ -139,7 +167,9 @@ export function createApp(deps: AppDeps) {
     }
     const p = EscalationPatch.safeParse(body);
     if (!p.success) return c.json({ error: "invalid_status" }, 400);
-    const r = deps.db.query("UPDATE escalations SET status = ? WHERE id = ?").run(p.data.status, c.req.param("id"));
+    const r = deps.db
+      .query("UPDATE escalations SET status = ? WHERE id = ?")
+      .run(p.data.status, c.req.param("id"));
     if (r.changes === 0) return c.json({ error: "not_found" }, 404);
     return c.json(deps.db.query("SELECT * FROM escalations WHERE id = ?").get(c.req.param("id")));
   });
@@ -151,7 +181,9 @@ export function createApp(deps: AppDeps) {
   });
 
   api.get("/metrics", (c) => {
-    const turns = deps.db.query("SELECT payload_json, latency_ms FROM traces WHERE stage = 'output'").all() as { payload_json: string }[];
+    const turns = deps.db
+      .query("SELECT payload_json, latency_ms FROM traces WHERE stage = 'output'")
+      .all() as { payload_json: string }[];
     const actions: Record<string, number> = {};
     const latencies: number[] = [];
     for (const t of turns) {
@@ -160,9 +192,12 @@ export function createApp(deps: AppDeps) {
       latencies.push(p.latency_total_ms);
     }
     latencies.sort((a, b) => a - b);
-    const pct = (q: number) => (latencies.length ? latencies[Math.min(latencies.length - 1, Math.floor(q * latencies.length))] : 0);
+    const pct = (q: number) =>
+      latencies.length ? latencies[Math.min(latencies.length - 1, Math.floor(q * latencies.length))] : 0;
     const guards = deps.db
-      .query("SELECT json_extract(payload_json, '$.rule') AS rule, COUNT(*) AS n FROM traces WHERE stage = 'guardrail' GROUP BY rule ORDER BY n DESC")
+      .query(
+        "SELECT json_extract(payload_json, '$.rule') AS rule, COUNT(*) AS n FROM traces WHERE stage = 'guardrail' GROUP BY rule ORDER BY n DESC",
+      )
       .all();
     const jev = deps.db
       .query(

@@ -96,7 +96,13 @@ export class Bm25Index {
       }
       // Superseded pages stay searchable but rank below current policy (defect D-02).
       if (d.chunk.superseded) score *= 0.5;
-      return { chunkId: d.chunk.chunkId, docId: d.chunk.docId, title: d.chunk.title, text: d.chunk.text, score: Math.round(score * 1000) / 1000 };
+      return {
+        chunkId: d.chunk.chunkId,
+        docId: d.chunk.docId,
+        title: d.chunk.title,
+        text: d.chunk.text,
+        score: Math.round(score * 1000) / 1000,
+      };
     });
     // Best chunk per document, so top-k is k distinct documents.
     const best = new Map<string, Hit>();

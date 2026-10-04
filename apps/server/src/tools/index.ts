@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { z } from "zod";
 import { config } from "../config.ts";
-import { normalizeEmail, normalizeOrderId, type Priority } from "../policy/input.ts";
+import { type Priority, normalizeEmail, normalizeOrderId } from "../policy/input.ts";
 import type { Bm25Index, Hit } from "../retrieval/bm25.ts";
 
 // The complete tool surface. There is deliberately no refund, cancel, address, or exchange tool:
@@ -32,7 +32,9 @@ export type ToolContext = {
 export type ToolResult = { ok: boolean; data: Record<string, unknown> };
 
 export function searchKb(ctx: ToolContext, query: string): ToolResult {
-  const hits = ctx.index.search(query, config.retrieval.topK).filter((h) => h.score >= config.retrieval.minScore);
+  const hits = ctx.index
+    .search(query, config.retrieval.topK)
+    .filter((h) => h.score >= config.retrieval.minScore);
   for (const h of hits) ctx.retrieved.set(h.docId, h);
   return {
     ok: hits.length > 0,
@@ -56,9 +58,9 @@ export type OrderView = {
 type SessionRow = { verified_order_id: string | null; verify_attempts: number };
 
 export function getSession(db: Database, sessionId: string): SessionRow {
-  const row = db.query("SELECT verified_order_id, verify_attempts FROM sessions WHERE id = ?").get(sessionId) as
-    | SessionRow
-    | null;
+  const row = db
+    .query("SELECT verified_order_id, verify_attempts FROM sessions WHERE id = ?")
+    .get(sessionId) as SessionRow | null;
   if (!row) throw new Error("session not found");
   return row;
 }
@@ -84,22 +86,23 @@ export function getOrder(ctx: ToolContext, rawOrderId: string, rawEmail: string)
       `SELECT o.id, o.status, o.eta, o.delivered_at, o.carrier, o.tracking_no, c.email
        FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.id = ?`,
     )
-    .get(orderId) as
-    | {
-        id: string;
-        status: string;
-        eta: string | null;
-        delivered_at: string | null;
-        carrier: string | null;
-        tracking_no: string | null;
-        email: string;
-      }
-    | null;
+    .get(orderId) as {
+    id: string;
+    status: string;
+    eta: string | null;
+    delivered_at: string | null;
+    carrier: string | null;
+    tracking_no: string | null;
+    email: string;
+  } | null;
 
   if (!row || normalizeEmail(row.email) !== email) {
     ctx.db.query("UPDATE sessions SET verify_attempts = verify_attempts + 1 WHERE id = ?").run(ctx.sessionId);
     const attempts = session.verify_attempts + 1;
-    return { ok: false, data: { error: NOT_VERIFIED, attempts_left: config.limits.maxVerifyAttempts - attempts } };
+    return {
+      ok: false,
+      data: { error: NOT_VERIFIED, attempts_left: config.limits.maxVerifyAttempts - attempts },
+    };
   }
 
   ctx.db.query("UPDATE sessions SET verified_order_id = ? WHERE id = ?").run(row.id, ctx.sessionId);
@@ -143,7 +146,9 @@ export function createEscalation(
 ): ToolResult {
   // One open ticket per session: re-escalating upgrades priority instead of spamming the queue.
   const open = ctx.db
-    .query("SELECT id, priority FROM escalations WHERE session_id = ? AND status != 'resolved' ORDER BY created_at DESC")
+    .query(
+      "SELECT id, priority FROM escalations WHERE session_id = ? AND status != 'resolved' ORDER BY created_at DESC",
+    )
     .get(ctx.sessionId) as { id: string; priority: Priority } | null;
   if (open) {
     if (priority === "high" && open.priority !== "high") {

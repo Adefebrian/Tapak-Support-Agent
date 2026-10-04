@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { MessageResponseSchema } from "../src/agent/schema.ts";
-import { createApp, RateLimiter } from "../src/http/app.ts";
+import { RateLimiter, createApp } from "../src/http/app.ts";
 import { harness } from "./helpers.ts";
 
 function app(rateLimiter?: RateLimiter) {
@@ -55,7 +55,9 @@ describe("API contract", () => {
   test("escalation queue lists tickets and PATCH changes status", async () => {
     const { app: a } = app();
     const id = await newSession(a);
-    const m = (await (await send(a, id, "Please cancel my order TPK-10003")).json()) as { escalation_id: string };
+    const m = (await (await send(a, id, "Please cancel my order TPK-10003")).json()) as {
+      escalation_id: string;
+    };
     const list = (await (await a.request("/api/v1/escalations")).json()) as { escalations: { id: string }[] };
     expect(list.escalations.map((e) => e.id)).toContain(m.escalation_id);
     const p = await a.request(`/api/v1/escalations/${m.escalation_id}`, {

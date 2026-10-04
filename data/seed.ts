@@ -92,7 +92,9 @@ export function seedDb(db: Database): void {
       "INSERT INTO orders (id,customer_id,status,created_at,delivered_at,eta,carrier,tracking_no) VALUES (?,?,?,?,?,?,?,?)",
     );
     for (const row of ORDERS) o.run(...row);
-    const i = db.prepare("INSERT INTO order_items (order_id,sku,name,size_eu,qty,price) VALUES (?,?,?,?,?,?)");
+    const i = db.prepare(
+      "INSERT INTO order_items (order_id,sku,name,size_eu,qty,price) VALUES (?,?,?,?,?,?)",
+    );
     for (const row of ITEMS) i.run(...row);
   });
   tx();

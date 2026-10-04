@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { join, normalize } from "node:path";
+import { resolve, sep } from "node:path";
 import { config } from "./config.ts";
 import { openDb } from "./db.ts";
 import { createApp } from "./http/app.ts";
@@ -22,17 +22,35 @@ const app = createApp({ db, index, llm, decision });
 
 // Static web client (built by apps/client/build.ts). SPA fallback to index.html.
 app.get("*", async (c) => {
-  const path = normalize(c.req.path).replace(/^(\.\.[/\\])+/, "");
-  const file = Bun.file(join(config.publicDir, path === "/" ? "index.html" : path));
-  if (path !== "/" && (await file.exists())) {
-    const immutable = /\.[a-f0-9]{8,}\.(js|css)$/.test(path);
-    return new Response(file, { headers: { "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache" } });
+  const path = c.req.path;
+  let decoded = path;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    return c.text("bad request", 400);
   }
-  const html = Bun.file(join(config.publicDir, "index.html"));
+  const target = resolve(config.publicDir, `.${decoded}`);
+  // Never serve anything outside the public directory, whatever the encoding of the path.
+  const inside = target.startsWith(config.publicDir + sep);
+  const file = Bun.file(target);
+  if (path !== "/" && inside && (await file.exists())) {
+    const immutable = /\.[a-z0-9]{8}\.(js|css)$/.test(path);
+    return new Response(file, {
+      headers: { "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache" },
+    });
+  }
+  const html = Bun.file(resolve(config.publicDir, "index.html"));
   if (!(await html.exists())) return c.text("client not built. Run: bun run build", 503);
-  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" } });
+  return new Response(html, {
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" },
+  });
 });
 
 Bun.serve({ port: config.port, fetch: app.fetch });
-log("info", "server_started", { port: config.port, kb_docs: docs.length, llm: `${llm.name}:${llm.model}`, jev: decision.name });
+log("info", "server_started", {
+  port: config.port,
+  kb_docs: docs.length,
+  llm: `${llm.name}:${llm.model}`,
+  jev: decision.name,
+});
 console.log(`Tapak Support Agent on http://localhost:${config.port}`);

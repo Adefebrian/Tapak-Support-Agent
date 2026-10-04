@@ -7,5 +7,4 @@ data/*.db-*
 .env
 .DS_Store
 .jal/
-evidence/runs/
 apps/native/src-tauri/gen/

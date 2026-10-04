@@ -2,33 +2,33 @@ import type { Database } from "bun:sqlite";
 import { config } from "../config.ts";
 import { log } from "../observability/logger.ts";
 import { redact } from "../observability/redact.ts";
-import { newTraceId, TurnTrace } from "../observability/trace.ts";
+import { TurnTrace, newTraceId } from "../observability/trace.ts";
 import {
   type Action,
-  actionKind,
-  analyzeInput,
   type InputAnalysis,
   type Intent,
   type Priority,
+  actionKind,
+  analyzeInput,
   riskierIntent,
 } from "../policy/input.ts";
-import { clarifyFinal, type GuardHit, guardOutput } from "../policy/output.ts";
+import { type GuardHit, clarifyFinal, guardOutput } from "../policy/output.ts";
 import type { DecisionProvider, PreDecision } from "../providers/decision/types.ts";
 import type { LLMProvider, LlmMessage } from "../providers/llm/types.ts";
 import type { Bm25Index, Hit } from "../retrieval/bm25.ts";
 import {
+  NOT_VERIFIED,
+  type OrderView,
+  ToolArgs,
+  type ToolContext,
   createEscalation,
   getOrder,
   loadOrderView,
-  NOT_VERIFIED,
-  type OrderView,
   requestClarification,
   searchKb,
-  type ToolContext,
-  ToolArgs,
   withTimeout,
 } from "../tools/index.ts";
-import { ACTION_PHRASES, PROMPT_TEMPLATES as T, SYSTEM_PROMPT } from "./prompt.ts";
+import { ACTION_PHRASES, SYSTEM_PROMPT, PROMPT_TEMPLATES as T } from "./prompt.ts";
 import { type Final, type MessageResponse, parseStep } from "./schema.ts";
 
 export type AgentDeps = { db: Database; index: Bm25Index; llm: LLMProvider; decision: DecisionProvider };
@@ -67,12 +67,17 @@ export class Agent {
     const { db } = this.deps;
     const traceId = newTraceId();
     const turn =
-      (db.query("SELECT COUNT(*) AS n FROM messages WHERE session_id = ? AND role = 'user'").get(sessionId) as { n: number })
-        .n + 1;
+      (
+        db
+          .query("SELECT COUNT(*) AS n FROM messages WHERE session_id = ? AND role = 'user'")
+          .get(sessionId) as { n: number }
+      ).n + 1;
     const trace = new TurnTrace(traceId, sessionId, turn);
     const guards: GuardHit[] = [];
     const session = db
-      .query("SELECT verified_order_id, verify_attempts, pending_order_id, pending_email FROM sessions WHERE id = ?")
+      .query(
+        "SELECT verified_order_id, verify_attempts, pending_order_id, pending_email FROM sessions WHERE id = ?",
+      )
       .get(sessionId) as SessionState;
 
     // ---- input stage -------------------------------------------------------
@@ -90,7 +95,8 @@ export class Agent {
         policy_exception: a.policyException,
       },
     });
-    if (a.injectionFlags.length) guards.push({ rule: "injection_detected", effect: "stripped", detail: a.injectionFlags.join(",") });
+    if (a.injectionFlags.length)
+      guards.push({ rule: "injection_detected", effect: "stripped", detail: a.injectionFlags.join(",") });
 
     const candidates = {
       orderId: a.orderIds[0] ?? session.pending_order_id,
@@ -101,7 +107,10 @@ export class Agent {
     const history = this.history(sessionId);
     const pre = await this.deps.decision.pre({
       message,
-      recentTurns: history.slice(-6).map((m) => `${m.role}: ${m.content}`).join("\n"),
+      recentTurns: history
+        .slice(-6)
+        .map((m) => `${m.role}: ${m.content}`)
+        .join("\n"),
       ruleIntent: a.intent,
       verified: session.verified_order_id !== null,
     });
@@ -143,7 +152,11 @@ export class Agent {
       const results = kb.data.results as { doc_id: string; score: number }[];
       trace.add(
         "retrieval",
-        { query: message, top_k: results.map((r) => ({ doc_id: r.doc_id, score: r.score })), empty: results.length === 0 },
+        {
+          query: message,
+          top_k: results.map((r) => ({ doc_id: r.doc_id, score: r.score })),
+          empty: results.length === 0,
+        },
         performance.now() - t0,
       );
 
@@ -159,8 +172,9 @@ export class Agent {
 
     // ---- output guard ---------------------------------------------------------
     let final = outcome.final;
-    const verifiedId = (db.query("SELECT verified_order_id FROM sessions WHERE id = ?").get(sessionId) as SessionState)
-      .verified_order_id;
+    const verifiedId = (
+      db.query("SELECT verified_order_id FROM sessions WHERE id = ?").get(sessionId) as SessionState
+    ).verified_order_id;
     const verifiedOrder = verifiedId ? loadOrderView(db, verifiedId) : null;
 
     if (!outcome.templated) {
@@ -181,7 +195,13 @@ export class Agent {
         const gr = await this.deps.decision.groundedness(final.reply, passages);
         trace.add(
           "decision.jev",
-          { provider: this.deps.decision.name, type: "groundedness", status: gr.status, score: gr.score ?? null, error: gr.error ?? null },
+          {
+            provider: this.deps.decision.name,
+            type: "groundedness",
+            status: gr.status,
+            score: gr.score ?? null,
+            error: gr.error ?? null,
+          },
           gr.latencyMs,
         );
         if (gr.status === "timeout" || gr.status === "error") {
@@ -189,13 +209,21 @@ export class Agent {
           final = templated(T.fallback, "escalate");
           outcome.escalate = { reason: "jev_unavailable", priority: "normal" };
         } else if (gr.status === "ok" && (gr.score ?? 0) < config.groundednessThreshold) {
-          guards.push({ rule: "groundedness_low", effect: "downgraded_to_clarify", detail: String(gr.score) });
+          guards.push({
+            rule: "groundedness_low",
+            effect: "downgraded_to_clarify",
+            detail: String(gr.score),
+          });
           final = clarifyFinal();
         }
       }
 
       // A lost parcel always needs a human claim, whatever the model said.
-      if (verifiedOrder?.status === "lost" && final.action === "answer" && final.reply.includes(verifiedOrder.order_id)) {
+      if (
+        verifiedOrder?.status === "lost" &&
+        final.action === "answer" &&
+        final.reply.includes(verifiedOrder.order_id)
+      ) {
         guards.push({ rule: "lost_parcel_claim", effect: "escalated" });
         final = { ...final, action: "escalate" };
         outcome.escalate = { reason: "lost_parcel", priority: "normal" };
@@ -217,12 +245,18 @@ export class Agent {
       escalationId = r.data.escalation_id as string;
       trace.add(
         "tool_call",
-        { tool: "create_escalation", by: "code", args: { reason: esc.reason, priority: esc.priority }, result: r.data },
+        {
+          tool: "create_escalation",
+          by: "code",
+          args: { reason: esc.reason, priority: esc.priority },
+          result: r.data,
+        },
         performance.now() - t0,
       );
     }
 
-    for (const g of guards) trace.add("guardrail", { rule: g.rule, effect: g.effect, detail: g.detail ?? null });
+    for (const g of guards)
+      trace.add("guardrail", { rule: g.rule, effect: g.effect, detail: g.detail ?? null });
 
     // ---- persist ----------------------------------------------------------------
     this.persistPending(sessionId, candidates, verifiedId);
@@ -241,9 +275,21 @@ export class Agent {
     );
 
     const latency = trace.elapsed();
-    trace.add("output", { action: final.action, citations: final.citations, escalation_id: escalationId, latency_total_ms: latency });
+    trace.add("output", {
+      action: final.action,
+      citations: final.citations,
+      escalation_id: escalationId,
+      latency_total_ms: latency,
+    });
     trace.flush(db);
-    log("info", "turn", { trace_id: traceId, session_id: sessionId, turn, intent, action: final.action, latency_ms: latency });
+    log("info", "turn", {
+      trace_id: traceId,
+      session_id: sessionId,
+      turn,
+      intent,
+      action: final.action,
+      latency_ms: latency,
+    });
 
     return {
       reply: final.reply,
@@ -274,11 +320,19 @@ export class Agent {
   ): Outcome | null {
     if (pre.status === "timeout" || pre.status === "error") {
       guards.push({ rule: "jev_unavailable", effect: "escalated", detail: pre.status });
-      return { final: templated(T.fallback, "escalate"), escalate: { reason: "jev_unavailable", priority: "normal" }, templated: true };
+      return {
+        final: templated(T.fallback, "escalate"),
+        escalate: { reason: "jev_unavailable", priority: "normal" },
+        templated: true,
+      };
     }
     if (intent === "complaint" || a.highPriority) {
       guards.push({ rule: "high_priority_keywords", effect: "escalated" });
-      return { final: templated(T.complaint, "escalate"), escalate: { reason: "complaint_or_dispute", priority: "high" }, templated: true };
+      return {
+        final: templated(T.complaint, "escalate"),
+        escalate: { reason: "complaint_or_dispute", priority: "high" },
+        templated: true,
+      };
     }
     if (intent === "action_request") {
       const k = actionKind(message);
@@ -297,20 +351,41 @@ export class Agent {
     if (pre.status === "ok" && (pre.escalationScore ?? 0) >= config.escalationScoreThreshold) {
       guards.push({ rule: "jev_escalation_score", effect: "escalated", detail: String(pre.escalationScore) });
       const priority: Priority = (pre.escalationScore ?? 0) >= 0.95 ? "high" : "normal";
-      return { final: templated(T.fallback, "escalate"), escalate: { reason: "jev_escalation_score", priority }, templated: true };
+      return {
+        final: templated(T.fallback, "escalate"),
+        escalate: { reason: "jev_escalation_score", priority },
+        templated: true,
+      };
     }
     if (a.greeting) return { final: templated(T.greeting, "answer"), templated: true };
+
+    // An injection attempt with no legitimate order lookup gets a fixed boundary reply instead of a
+    // best-effort KB answer (defect D-05). Order lookups still go through normal verification.
+    if (a.injectionFlags.length && intent !== "order_status") {
+      guards.push({ rule: "injection_boundary", effect: "blocked" });
+      return { final: templated(T.boundary, "refuse"), templated: true };
+    }
 
     if (intent === "order_status") {
       if (session.verify_attempts >= config.limits.maxVerifyAttempts) {
         guards.push({ rule: "verify_attempts_exceeded", effect: "escalated" });
-        return { final: templated(T.verifyLocked, "escalate"), escalate: { reason: "verification_failed", priority: "normal" }, templated: true };
+        return {
+          final: templated(T.verifyLocked, "escalate"),
+          escalate: { reason: "verification_failed", priority: "normal" },
+          templated: true,
+        };
       }
       const asksNewOrder = a.orderIds.length > 0 && a.orderIds[0] !== session.verified_order_id;
       if (!session.verified_order_id || asksNewOrder) {
-        const missing = [!candidates.orderId && "order_id", !candidates.email && "email"].filter(Boolean) as string[];
+        const missing = [!candidates.orderId && "order_id", !candidates.email && "email"].filter(
+          Boolean,
+        ) as string[];
         if (missing.length) {
-          guards.push({ rule: "verification_incomplete", effect: "downgraded_to_clarify", detail: missing.join(",") });
+          guards.push({
+            rule: "verification_incomplete",
+            effect: "downgraded_to_clarify",
+            detail: missing.join(","),
+          });
           return { final: templated(T.needOrderFields(missing), "clarify", missing), templated: true };
         }
       }
@@ -344,21 +419,29 @@ export class Agent {
         hits: [...ctx.retrieved.values()].map((h) => ({ docId: h.docId, text: h.text, score: h.score })),
         toolLog,
       };
-      const kbBlock = `KNOWLEDGE BASE PASSAGES retrieved this turn (cite by doc_id):\n${[...ctx.retrieved.values()]
-        .map((h) => `[${h.docId}] ${h.text}`)
-        .join("\n") || "(none)"}\nVerified order in this session: ${verifiedOrder ? JSON.stringify(verifiedOrder) : "none"}`;
+      const kbBlock = `KNOWLEDGE BASE PASSAGES retrieved this turn (cite by doc_id):\n${
+        [...ctx.retrieved.values()].map((h) => `[${h.docId}] ${h.text}`).join("\n") || "(none)"
+      }\nVerified order in this session: ${verifiedOrder ? JSON.stringify(verifiedOrder) : "none"}`;
 
       const t0 = performance.now();
       let raw: string;
       let usage = { input: 0, output: 0 };
       try {
-        const res = await this.callLlm({ system: `${SYSTEM_PROMPT}\n\n${kbBlock}`, messages, context: llmCtx });
+        const res = await this.callLlm({
+          system: `${SYSTEM_PROMPT}\n\n${kbBlock}`,
+          messages,
+          context: llmCtx,
+        });
         raw = res.text;
         usage = res.usage;
       } catch (e) {
         trace.add("llm", { model: llm.model, status: "error", error: String(e) }, performance.now() - t0);
         guards.push({ rule: "llm_unavailable", effect: "escalated" });
-        return { final: templated(T.fallback, "escalate"), escalate: { reason: "llm_unavailable", priority: "normal" }, templated: true };
+        return {
+          final: templated(T.fallback, "escalate"),
+          escalate: { reason: "llm_unavailable", priority: "normal" },
+          templated: true,
+        };
       }
 
       const parsed = parseStep(raw);
@@ -381,7 +464,10 @@ export class Agent {
         if (!schemaRetried) {
           schemaRetried = true;
           messages.push({ role: "assistant", content: raw.slice(0, 2000) });
-          messages.push({ role: "user", content: `Your last response was invalid: ${parsed.error}. Respond with one valid JSON object only.` });
+          messages.push({
+            role: "user",
+            content: `Your last response was invalid: ${parsed.error}. Respond with one valid JSON object only.`,
+          });
           step--;
           continue;
         }
@@ -409,14 +495,22 @@ export class Agent {
         trace.add("tool_call", { tool: s.name, args: args.data, result: r.data }, performance.now() - tt);
         const fields = r.data.missing_fields as string[];
         return {
-          final: templated(`Could you share ${fields.join(" and ").replace(/_/g, " ")} so I can help?`, "clarify", fields),
+          final: templated(
+            `Could you share ${fields.join(" and ").replace(/_/g, " ")} so I can help?`,
+            "clarify",
+            fields,
+          ),
           templated: true,
         };
       }
 
       if (s.name === "create_escalation") {
         const d = args.data as { reason: string; priority: Priority; summary: string };
-        trace.add("tool_call", { tool: s.name, by: "model", args: { reason: d.reason, priority: d.priority } }, performance.now() - tt);
+        trace.add(
+          "tool_call",
+          { tool: s.name, by: "model", args: { reason: d.reason, priority: d.priority } },
+          performance.now() - tt,
+        );
         return {
           final: templated(T.fallback, "escalate"),
           escalate: { reason: `model:${d.reason.slice(0, 60)}`, priority: d.priority },
@@ -427,24 +521,42 @@ export class Agent {
       let result: { ok: boolean; data: Record<string, unknown> };
       try {
         if (s.name === "search_kb") {
-          result = await withTimeout(searchKb(ctx, (args.data as { query: string }).query), config.limits.toolTimeoutMs, "search_kb");
+          result = await withTimeout(
+            searchKb(ctx, (args.data as { query: string }).query),
+            config.limits.toolTimeoutMs,
+            "search_kb",
+          );
         } else {
           const d = args.data as { order_id: string; email: string };
-          result = await withTimeout(getOrder(ctx, d.order_id, d.email), config.limits.toolTimeoutMs, "get_order");
+          result = await withTimeout(
+            getOrder(ctx, d.order_id, d.email),
+            config.limits.toolTimeoutMs,
+            "get_order",
+          );
         }
       } catch (e) {
         trace.add("tool_call", { tool: s.name, status: "error", error: String(e) }, performance.now() - tt);
         guards.push({ rule: "tool_error", effect: "escalated", detail: s.name });
-        return { final: templated(T.fallback, "escalate"), escalate: { reason: "tool_error", priority: "normal" }, templated: true };
+        return {
+          final: templated(T.fallback, "escalate"),
+          escalate: { reason: "tool_error", priority: "normal" },
+          templated: true,
+        };
       }
 
       trace.add(
         "tool_call",
         {
           tool: s.name,
-          args: s.name === "get_order" ? { order_id: (args.data as { order_id: string }).order_id, email: "[email]" } : args.data,
+          args:
+            s.name === "get_order"
+              ? { order_id: (args.data as { order_id: string }).order_id, email: "[email]" }
+              : args.data,
           ok: result.ok,
-          result: s.name === "get_order" ? summarizeOrderResult(result) : { hits: (result.data.results as unknown[])?.length ?? 0 },
+          result:
+            s.name === "get_order"
+              ? summarizeOrderResult(result)
+              : { hits: (result.data.results as unknown[])?.length ?? 0 },
         },
         performance.now() - tt,
       );
@@ -456,11 +568,18 @@ export class Agent {
         const err = result.data.error;
         if (err === "verify_locked") {
           guards.push({ rule: "verify_attempts_exceeded", effect: "escalated" });
-          return { final: templated(T.verifyLocked, "escalate"), escalate: { reason: "verification_failed", priority: "normal" }, templated: true };
+          return {
+            final: templated(T.verifyLocked, "escalate"),
+            escalate: { reason: "verification_failed", priority: "normal" },
+            templated: true,
+          };
         }
         if (err === "args_not_from_customer") {
           guards.push({ rule: "tool_args_provenance", effect: "downgraded_to_clarify" });
-          return { final: templated(T.needOrderFields(["order_id", "email"]), "clarify", ["order_id", "email"]), templated: true };
+          return {
+            final: templated(T.needOrderFields(["order_id", "email"]), "clarify", ["order_id", "email"]),
+            templated: true,
+          };
         }
         if (err === NOT_VERIFIED) {
           const left = Number(result.data.attempts_left ?? 0);
@@ -469,7 +588,11 @@ export class Agent {
           candidates.orderId = null;
           candidates.email = null;
           if (left <= 0) {
-            return { final: templated(T.verifyLocked, "escalate"), escalate: { reason: "verification_failed", priority: "normal" }, templated: true };
+            return {
+              final: templated(T.verifyLocked, "escalate"),
+              escalate: { reason: "verification_failed", priority: "normal" },
+              templated: true,
+            };
           }
           return { final: templated(T.notVerified(left), "clarify", ["order_id", "email"]), templated: true };
         }
@@ -480,7 +603,11 @@ export class Agent {
     }
 
     guards.push({ rule: "tool_step_limit", effect: "escalated" });
-    return { final: templated(T.fallback, "escalate"), escalate: { reason: "tool_step_limit", priority: "normal" }, templated: true };
+    return {
+      final: templated(T.fallback, "escalate"),
+      escalate: { reason: "tool_step_limit", priority: "normal" },
+      templated: true,
+    };
   }
 
   private async callLlm(req: Parameters<LLMProvider["complete"]>[0]) {
@@ -496,18 +623,27 @@ export class Agent {
   }
 
   private currentVerified(db: Database, sessionId: string): OrderView | null {
-    const id = (db.query("SELECT verified_order_id FROM sessions WHERE id = ?").get(sessionId) as SessionState).verified_order_id;
+    const id = (
+      db.query("SELECT verified_order_id FROM sessions WHERE id = ?").get(sessionId) as SessionState
+    ).verified_order_id;
     return id ? loadOrderView(db, id) : null;
   }
 
   private history(sessionId: string): LlmMessage[] {
     const rows = this.deps.db
       .query("SELECT role, content_redacted FROM messages WHERE session_id = ? ORDER BY id DESC LIMIT ?")
-      .all(sessionId, config.limits.historyTurns * 2) as { role: "user" | "assistant"; content_redacted: string }[];
+      .all(sessionId, config.limits.historyTurns * 2) as {
+      role: "user" | "assistant";
+      content_redacted: string;
+    }[];
     return rows.reverse().map((r) => ({ role: r.role, content: r.content_redacted }));
   }
 
-  private persistPending(sessionId: string, c: { orderId: string | null; email: string | null }, verifiedId: string | null) {
+  private persistPending(
+    sessionId: string,
+    c: { orderId: string | null; email: string | null },
+    verifiedId: string | null,
+  ) {
     if (verifiedId && c.orderId === verifiedId) {
       this.clearPending(sessionId);
       return;
@@ -518,7 +654,9 @@ export class Agent {
   }
 
   private clearPending(sessionId: string) {
-    this.deps.db.query("UPDATE sessions SET pending_order_id = NULL, pending_email = NULL WHERE id = ?").run(sessionId);
+    this.deps.db
+      .query("UPDATE sessions SET pending_order_id = NULL, pending_email = NULL WHERE id = ?")
+      .run(sessionId);
   }
 }
 
@@ -527,4 +665,3 @@ function summarizeOrderResult(r: { ok: boolean; data: Record<string, unknown> })
   const o = r.data.order as OrderView;
   return { status: o.status, items: o.items.length };
 }
-

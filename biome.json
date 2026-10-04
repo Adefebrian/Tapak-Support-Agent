@@ -1,15 +1,33 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "files": {
-    "ignore": ["node_modules", "dist", "apps/server/public", "apps/native/src-tauri/target", "apps/native/src-tauri/gen", "evidence"]
+    "ignore": [
+      "node_modules",
+      "dist",
+      "apps/server/public",
+      "apps/native/src-tauri/target",
+      "apps/native/src-tauri/gen",
+      "evidence"
+    ]
   },
-  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 110 },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 110
+  },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true,
-      "a11y": { "useButtonType": "off", "noSvgWithoutTitle": "off" },
-      "style": { "noNonNullAssertion": "off" }
+      "a11y": {
+        "useButtonType": "off",
+        "noSvgWithoutTitle": "off",
+        "useSemanticElements": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off"
+      }
     }
   }
 }

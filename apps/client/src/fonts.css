@@ -1,0 +1,17 @@
+/* Self-hosted Geist, Latin subset only. No third-party font request: works offline in the Tauri shell. */
+@font-face {
+  font-family: "Geist Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2")
+    format("woff2-variations");
+}
+@font-face {
+  font-family: "Geist Mono Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2")
+    format("woff2-variations");
+}
