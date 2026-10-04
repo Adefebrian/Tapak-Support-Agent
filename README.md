@@ -4,6 +4,8 @@ A customer support agent for a made-up shoe shop, Tapak Footwear. It answers que
 
 The core rule: the agent can read and explain, and nothing else. That rule lives in code, not in the prompt. There is no refund tool or cancel tool for the model to misuse.
 
+Deployment : https://tapak.adefebrian.com/
+
 ## Setup
 
 You need [Bun](https://bun.sh) 1.2 or newer. No Docker, no API key.
