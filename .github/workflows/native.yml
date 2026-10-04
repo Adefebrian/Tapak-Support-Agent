@@ -88,18 +88,38 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun install
         working-directory: apps/native
-      - name: Init and build debug APK
+      - name: Init and build release APK
         working-directory: apps/native
         run: |
           bunx tauri android init --ci
-          # Tauri's template already allows plain HTTP in debug builds, which the emulator needs to reach
-          # the host backend at 10.0.2.2:8787. Adding the attribute again breaks the manifest.
-          grep -n "usesCleartextTraffic" src-tauri/gen/android/app/src/main/AndroidManifest.xml
-          bunx tauri android build --debug --apk
+          # The app talks to a server address the user sets (http://10.0.2.2:8787 on the emulator), so the
+          # release build must allow plain HTTP too. Tauri's template only enables it for debug builds.
+          gradle=src-tauri/gen/android/app/build.gradle.kts
+          grep -n 'usesCleartextTraffic' "$gradle"
+          sed -i 's/manifestPlaceholders\["usesCleartextTraffic"\] = "false"/manifestPlaceholders["usesCleartextTraffic"] = "true"/' "$gradle"
+          if grep -q 'usesCleartextTraffic"\] = "false"' "$gradle"; then echo "cleartext still disabled for release" >&2; exit 1; fi
+          # Release build (LTO, stripped) for real phones (arm64) and the emulator (x86_64).
+          bunx tauri android build --apk --target aarch64 --target x86_64
+      - name: Sign the APK
+        working-directory: apps/native/src-tauri/gen/android/app/build/outputs/apk
+        run: |
+          unsigned=$(find . -name '*release-unsigned.apk' | head -1)
+          echo "unsigned: $unsigned"
+          bt="$ANDROID_HOME/build-tools/34.0.0"
+          # A key made for this build only: the APK installs normally, but a later build cannot update it in place.
+          keytool -genkeypair -keystore "$RUNNER_TEMP/tapak.jks" -alias tapak -keyalg RSA -keysize 2048 -validity 3650 \
+            -storepass tapak-build -keypass tapak-build -dname "CN=Tapak Support, O=Tapak Footwear, C=ID"
+          "$bt/zipalign" -p -f 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
+          mkdir -p "$GITHUB_WORKSPACE/apk"
+          version=$(jq -r .version "$GITHUB_WORKSPACE/apps/native/src-tauri/tauri.conf.json")
+          out="$GITHUB_WORKSPACE/apk/Tapak Support_${version}_android.apk"
+          "$bt/apksigner" sign --ks "$RUNNER_TEMP/tapak.jks" --ks-pass pass:tapak-build --out "$out" "$RUNNER_TEMP/aligned.apk"
+          "$bt/apksigner" verify --verbose "$out"
+          ls -la "$GITHUB_WORKSPACE/apk"
       - uses: actions/upload-artifact@v4
         with:
-          name: tapak-android-debug-apk
-          path: apps/native/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          name: tapak-android-apk
+          path: apk/*.apk
           if-no-files-found: error
 
   # On a version tag, gather every binary into one draft release. A draft is not public until published.
