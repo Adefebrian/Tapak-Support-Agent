@@ -108,6 +108,12 @@ jobs:
     needs: [desktop, android]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      # The source code as a release asset: the same archive as the submission ZIP (git archive of the tag).
+      - name: Source archive
+        run: |
+          mkdir -p dist
+          git archive --format=zip --prefix=tapak-support-agent/ -o dist/tapak-support-agent-source.zip "${GITHUB_REF_NAME}"
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -115,7 +121,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          find dist -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.apk' \) -print > files.txt
+          find dist -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.apk' -o -name '*-source.zip' \) -print > files.txt
           cat files.txt
           gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft \
             --title "Tapak Support ${GITHUB_REF_NAME}" \
