@@ -141,11 +141,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Bundle names contain spaces ("Tapak Support_0.1.0..."), so collect them into an array, never word-split.
-          mapfile -d '' files < <(find dist -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.apk' -o -name '*-source.zip' \) -print0)
-          printf '%s\n' "${files[@]}"
-          (cd dist && find . -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.apk' -o -name '*-source.zip' \) -exec sha256sum {} + | sed 's# \./.*/# #') > SHA256SUMS.txt
+          # Bundle names contain spaces ("Tapak Support_0.1.1..."). GitHub turns spaces in asset names into dots,
+          # so rename first: the checksum file then lists exactly the names people download.
+          mkdir -p upload
+          find dist -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.apk' -o -name '*-source.zip' \) -print0 |
+            while IFS= read -r -d '' f; do b=$(basename "$f"); cp "$f" "upload/${b// /.}"; done
+          (cd upload && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
           gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft \
             --title "Tapak Support ${GITHUB_REF_NAME}" \
             --notes "Thin desktop and Android clients for the Tapak Support Agent, built from this tag with Tauri 2 (Rust). Unsigned: on macOS right-click > Open; on Windows SmartScreen will warn. The app needs the server running (bun run dev) and its address set in the mode dialog." \
-            "${files[@]}" SHA256SUMS.txt
+            upload/*

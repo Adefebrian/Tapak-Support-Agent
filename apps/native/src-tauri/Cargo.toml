@@ -1,6 +1,6 @@
 [package]
 name = "tapak-support"
-version = "0.1.0"
+version = "0.1.1"
 description = "Tapak Support thin client. All agent logic, keys, and guardrails stay on the server."
 edition = "2021"
 
