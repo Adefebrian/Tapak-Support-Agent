@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - name: Lint
+        run: bun run lint
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Unit, guardrail, and API tests (mock LLM, mock JEV, no keys)
+        run: bun run test
+      - name: Seed and build client
+        run: bun run setup
+      - name: Eval in mock mode (regression net, no keys)
+        run: bun run eval --llm=mock --jev=off --label=ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eval-ci
+          path: evidence/runs/eval-ci-*

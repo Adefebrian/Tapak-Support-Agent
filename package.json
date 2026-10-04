@@ -12,7 +12,8 @@
     "eval": "bun run eval/run.ts",
     "typecheck": "tsc -p apps/server --noEmit && tsc -p apps/client --noEmit",
     "lint": "biome check .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "package": "mkdir -p dist && git archive --format=zip --prefix=tapak-support-agent/ -o dist/tapak-support-agent.zip HEAD"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

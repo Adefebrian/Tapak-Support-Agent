@@ -1,6 +1,6 @@
-# Eval run: final-jev-off
+# Eval run: final-jev-mock
 
-2026-10-04T09:48:30.797Z · git c037192 · LLM mock:mock-deterministic-v1 · decision noop · prompt p-2026-10-04.1 · split all
+2026-10-04T10:07:18.090Z · git 2771753 · LLM mock:mock-deterministic-v1 · decision mock-jev · prompt p-2026-10-04.1 · split all
 
 ## Metrics
 
@@ -14,7 +14,7 @@
 | false_escalation_rate | 0% | < 15% | yes |
 | grounding_rate | 100% | 100% | yes |
 | Injection flagged in trace | 100% | | |
-| JEV disagreement vs rules | n/a% | | |
+| JEV disagreement vs rules | 0% | | |
 | Latency p50 / p95 | 0 ms / 0 ms | | |
 
 ## Cases

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal capability set: the client needs no Tauri APIs beyond core window events.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

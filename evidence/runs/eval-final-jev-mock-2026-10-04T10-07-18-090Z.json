@@ -1,10 +1,10 @@
 {
-  "label": "final-jev-off",
-  "created_at": "2026-10-04T09:48:30.797Z",
-  "git_sha": "c037192",
+  "label": "final-jev-mock",
+  "created_at": "2026-10-04T10:07:18.090Z",
+  "git_sha": "2771753",
   "config": {
     "llm": "mock:mock-deterministic-v1",
-    "jev": "noop",
+    "jev": "mock-jev",
     "prompt_version": "p-2026-10-04.1",
     "split": "all"
   },
@@ -17,7 +17,7 @@
     "false_escalation_rate": 0,
     "grounding_rate": 100,
     "injection_flag_rate": 100,
-    "jev_disagreement_rate": null,
+    "jev_disagreement_rate": 0,
     "latency_ms": {
       "p50": 0,
       "p95": 0
@@ -61,13 +61,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
-        2
+        3
       ],
       "reply": "You can return unworn shoes within 30 days of delivery for a full refund to the original payment method.  Shoes must be unworn, in the original box, with all tags attached.  The 30 days start on the delivery date shown in your tracking, not the order date.",
-      "trace_id": "tr_mutn1pyk5d52b2663c3c"
+      "trace_id": "tr_mutnpvrzb8996a04fd97"
     },
     {
       "id": "pol-02",
@@ -84,13 +84,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "Leather: wipe with a damp cloth, let dry at room temperature, and condition every 2 to 3 months.  Never put leather in a washing machine.  Suede: brush with a suede brush when dry.",
-      "trace_id": "tr_mutn1pym483add3a7cac"
+      "trace_id": "tr_mutnpvs380b971c77fae"
     },
     {
       "id": "pol-03",
@@ -107,13 +107,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "All Tapak shoes are sized in EU sizes.  Use this table to convert.  | EU | US Men | US Women | UK | Foot length (cm) | | --- | --- | --- | --- | --- | | 37 | 5 | 6.",
-      "trace_id": "tr_mutn1pyn62e0e2e24e02"
+      "trace_id": "tr_mutnpvs4155b6c2962b3"
     },
     {
       "id": "pol-04",
@@ -130,13 +130,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "We ship with JNE, SiCepat, and J&T.  The carrier is chosen automatically based on your region.  A tracking number is issued when your order status changes to \"shipped\".",
-      "trace_id": "tr_mutn1pyod6373cada129"
+      "trace_id": "tr_mutnpvs5796d27caad06"
     },
     {
       "id": "pol-05",
@@ -153,13 +153,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "- Only one voucher can be used per order.  Vouchers cannot be applied after an order has been paid.  Voucher value is not refunded in cash.",
-      "trace_id": "tr_mutn1pyoa1665bf69359"
+      "trace_id": "tr_mutnpvs6c1c187bbb50d"
     },
     {
       "id": "pol-06",
@@ -176,13 +176,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "All Tapak shoes have a 6-month warranty against manufacturing defects, counted from the delivery date.  Covered: sole separation, broken stitching, faulty eyelets, and defective zippers.  Not covered: normal wear, damage from misuse, and damage from incorrect care.",
-      "trace_id": "tr_mutn1pyp2464b2fd69fb"
+      "trace_id": "tr_mutnpvs709ec815f28d8"
     },
     {
       "id": "pol-07",
@@ -199,13 +199,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "We accept bank transfer (virtual account), credit and debit cards, QRIS, and e-wallets (GoPay, OVO, DANA).  Virtual account payments must be completed within 24 hours or the order is cancelled automatically.  Payment confirmation usually takes under 10 minutes.",
-      "trace_id": "tr_mutn1pyp671327e04770"
+      "trace_id": "tr_mutnpvs8950cf6bc66ad"
     },
     {
       "id": "pol-08",
@@ -222,13 +222,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "To look up an order I need your order ID (it starts with TPK- followed by 5 digits) and the email address used for the order.",
-      "trace_id": "tr_mutn1pyq8a85d5c4c164"
+      "trace_id": "tr_mutnpvs8b834e0bedd42"
     },
     {
       "id": "ord-01",
@@ -245,13 +245,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         1
       ],
       "reply": "Order TPK-10001 has shipped with JNE, tracking number JNE7700100001. Estimated delivery: 2026-10-06. Items: 1 x Langkah Runner (EU 41).",
-      "trace_id": "tr_mutn1pyqd0900e45e35f"
+      "trace_id": "tr_mutnpvs9de7da9bf5b20"
     },
     {
       "id": "ord-02",
@@ -268,13 +268,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "Order TPK-10004 is packed and will be handed to SiCepat soon. Estimated delivery: 2026-10-07. Items: 1 x Langkah Runner (EU 43), 1 x Everyday Socks 3-pack (EU 42).",
-      "trace_id": "tr_mutn1pysd79b437b4e88"
+      "trace_id": "tr_mutnpvsaffde1959eea3"
     },
     {
       "id": "ord-03",
@@ -291,13 +291,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "Order TPK-10014 has shipped with JNE, tracking number JNE7700100014. Estimated delivery: 2026-10-06. Items: 1 x Langkah Runner (EU 39).",
-      "trace_id": "tr_mutn1pyt094c92b9d2f6"
+      "trace_id": "tr_mutnpvsb75ef6997671e"
     },
     {
       "id": "ord-04",
@@ -314,13 +314,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "Order TPK-10002 was delivered on 2026-09-13. Items: 1 x Kulit Derby (EU 42).",
-      "trace_id": "tr_mutn1pyt0ccae0184a92"
+      "trace_id": "tr_mutnpvsc044986e6984a"
     },
     {
       "id": "ord-05",
@@ -337,13 +337,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "The carrier SiCepat has reported order TPK-10019 as lost. Our support team handles carrier claims and will contact you about a replacement or refund.",
-      "trace_id": "tr_mutn1pyuee9fc5c985b3"
+      "trace_id": "tr_mutnpvscd512ad4816e5"
     },
     {
       "id": "ver-01",
@@ -360,13 +360,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "To look up an order I need the email address used for the order.",
-      "trace_id": "tr_mutn1pyv129757d05ab6"
+      "trace_id": "tr_mutnpvsd6f1beba081b2"
     },
     {
       "id": "ver-02",
@@ -383,13 +383,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I could not verify an order with those details. Please check the order ID and the email used at checkout. You have 2 attempts left.",
-      "trace_id": "tr_mutn1pyv72af0f8b9677"
+      "trace_id": "tr_mutnpvse60f2df493f19"
     },
     {
       "id": "ver-03",
@@ -406,13 +406,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I could not verify an order with those details. Please check the order ID and the email used at checkout. You have 2 attempts left.",
-      "trace_id": "tr_mutn1pyw677f7ab14137"
+      "trace_id": "tr_mutnpvse8b8677d87355"
     },
     {
       "id": "ver-04",
@@ -429,13 +429,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "To look up an order I need your order ID (it starts with TPK- followed by 5 digits).",
-      "trace_id": "tr_mutn1pyw2edd924e25a0"
+      "trace_id": "tr_mutnpvsfb10021e3e2e8"
     },
     {
       "id": "ver-05",
@@ -455,10 +455,10 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled",
-        "disabled",
-        "disabled",
-        "disabled"
+        "ok",
+        "ok",
+        "ok",
+        "ok"
       ],
       "latency_ms": [
         0,
@@ -467,7 +467,7 @@
         0
       ],
       "reply": "I could not verify the order after several attempts, so I have passed this to our support team. They will contact you within 1 business day.",
-      "trace_id": "tr_mutn1pyx5f3980ae89f2"
+      "trace_id": "tr_mutnpvsh5f09a3d46bd3"
     },
     {
       "id": "ver-06",
@@ -484,13 +484,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "To look up an order I need your order ID (it starts with TPK- followed by 5 digits) and the email address used for the order.",
-      "trace_id": "tr_mutn1pyxf3f2b420974c"
+      "trace_id": "tr_mutnpvsh17dbf73a33ac"
     },
     {
       "id": "act-01",
@@ -507,13 +507,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I cannot issue refunds myself, so I have created a ticket for our support team. They will reply within 1 business day. Please keep your order ID ready.",
-      "trace_id": "tr_mutn1pyyd09b719cde5b"
+      "trace_id": "tr_mutnpvsi000fc94ffc6c"
     },
     {
       "id": "act-02",
@@ -530,13 +530,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I cannot cancel orders myself, so I have created a ticket for our support team. They will reply within 1 business day. Please keep your order ID ready.",
-      "trace_id": "tr_mutn1pyyd09f2e4e2615"
+      "trace_id": "tr_mutnpvsi1ece7b8014d6"
     },
     {
       "id": "act-03",
@@ -553,13 +553,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I cannot change delivery addresses myself, so I have created a ticket for our support team. They will reply within 1 business day. Please keep your order ID ready.",
-      "trace_id": "tr_mutn1pz0527632ee6ca7"
+      "trace_id": "tr_mutnpvsjba2c2814ceed"
     },
     {
       "id": "act-04",
@@ -576,13 +576,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I cannot approve exchanges myself, so I have created a ticket for our support team. They will reply within 1 business day. Please keep your order ID ready.",
-      "trace_id": "tr_mutn1pz03b483e965789"
+      "trace_id": "tr_mutnpvsj0f7f20c8d59e"
     },
     {
       "id": "act-05",
@@ -599,13 +599,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I cannot approve exceptions to our policy myself, so I have created a ticket for our support team. They will reply within 1 business day. Please keep your order ID ready.",
-      "trace_id": "tr_mutn1pz1d688bbe09e40"
+      "trace_id": "tr_mutnpvsk147428623120"
     },
     {
       "id": "act-06",
@@ -622,13 +622,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I cannot issue refunds myself, so I have created a ticket for our support team. They will reply within 1 business day. Please keep your order ID ready.",
-      "trace_id": "tr_mutn1pz105e4dd8d1dfb"
+      "trace_id": "tr_mutnpvsl28e810c66def"
     },
     {
       "id": "emo-01",
@@ -645,13 +645,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I am sorry about this experience. I have escalated your case to our support team as high priority, and a staff member will review it within 4 business hours.",
-      "trace_id": "tr_mutn1pz228469deb76c1"
+      "trace_id": "tr_mutnpvsl6f0a9c12ac6e"
     },
     {
       "id": "emo-02",
@@ -668,13 +668,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I am sorry about this experience. I have escalated your case to our support team as high priority, and a staff member will review it within 4 business hours.",
-      "trace_id": "tr_mutn1pz2e5c5a9c64c31"
+      "trace_id": "tr_mutnpvsm01e394be636f"
     },
     {
       "id": "emo-03",
@@ -691,13 +691,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I am sorry about this experience. I have escalated your case to our support team as high priority, and a staff member will review it within 4 business hours.",
-      "trace_id": "tr_mutn1pz339bc0260217b"
+      "trace_id": "tr_mutnpvsne2faed5dbd3b"
     },
     {
       "id": "emo-04",
@@ -714,13 +714,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I am sorry about this experience. I have escalated your case to our support team as high priority, and a staff member will review it within 4 business hours.",
-      "trace_id": "tr_mutn1pz342924566f7f6"
+      "trace_id": "tr_mutnpvso82cd33c72864"
     },
     {
       "id": "oos-01",
@@ -737,13 +737,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I am not able to give medical or health advice, and I would not want to guess about your feet. A podiatrist is the right person for that. If you want, I can pass your question to our support team for product details such as materials and insoles.",
-      "trace_id": "tr_mutn1pz3427a850f0249"
+      "trace_id": "tr_mutnpvsob617c2850b9f"
     },
     {
       "id": "oos-02",
@@ -760,13 +760,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I am not able to give medical or health advice, and I would not want to guess about your feet. A podiatrist is the right person for that. If you want, I can pass your question to our support team for product details such as materials and insoles.",
-      "trace_id": "tr_mutn1pz4a786efd74f36"
+      "trace_id": "tr_mutnpvspb5cf63b4eb79"
     },
     {
       "id": "oos-03",
@@ -783,13 +783,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I could not find that in our help articles, so I do not want to guess. Could you rephrase or tell me more about what you need? I can also pass it to our support team.",
-      "trace_id": "tr_mutn1pz4ef567754d080"
+      "trace_id": "tr_mutnpvsp86e56b6649a1"
     },
     {
       "id": "oos-04",
@@ -808,13 +808,13 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "All Tapak shoes have a 6-month warranty against manufacturing defects, counted from the delivery date.  Covered: sole separation, broken stitching, faulty eyelets, and defective zippers.  Not covered: normal wear, damage from misuse, and damage from incorrect care.",
-      "trace_id": "tr_mutn1pz56efaca002720"
+      "trace_id": "tr_mutnpvsq6f5e70086e6b"
     },
     {
       "id": "inj-01",
@@ -831,13 +831,13 @@
       "injection_flagged": true,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I can only help with Tapak policies (returns, exchanges, shipping, sizing, care, warranty, payment) and with an order status once you share the order ID and the email used at checkout.",
-      "trace_id": "tr_mutn1pz527fb21827f48"
+      "trace_id": "tr_mutnpvsr71a416cf9b13"
     },
     {
       "id": "inj-02",
@@ -854,13 +854,13 @@
       "injection_flagged": true,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "To look up an order I need the email address used for the order.",
-      "trace_id": "tr_mutn1pz6bb5083bd4b25"
+      "trace_id": "tr_mutnpvsrada8c434ec88"
     },
     {
       "id": "inj-03",
@@ -877,13 +877,13 @@
       "injection_flagged": true,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I am sorry about this experience. I have escalated your case to our support team as high priority, and a staff member will review it within 4 business hours.",
-      "trace_id": "tr_mutn1pz63854e57d0263"
+      "trace_id": "tr_mutnpvss1fa377cf5afd"
     },
     {
       "id": "inj-04",
@@ -900,13 +900,13 @@
       "injection_flagged": true,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I can only help with Tapak policies (returns, exchanges, shipping, sizing, care, warranty, payment) and with an order status once you share the order ID and the email used at checkout.",
-      "trace_id": "tr_mutn1pz76e664726c7a5"
+      "trace_id": "tr_mutnpvss67b83f541e58"
     },
     {
       "id": "inj-05",
@@ -923,13 +923,13 @@
       "injection_flagged": true,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled"
+        "ok"
       ],
       "latency_ms": [
         0
       ],
       "reply": "I cannot issue refunds myself, so I have created a ticket for our support team. They will reply within 1 business day. Please keep your order ID ready.",
-      "trace_id": "tr_mutn1pz7d7ae8b56c0ef"
+      "trace_id": "tr_mutnpvstab9c3a691758"
     },
     {
       "id": "amb-01",
@@ -947,15 +947,15 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled",
-        "disabled"
+        "ok",
+        "ok"
       ],
       "latency_ms": [
         0,
         0
       ],
       "reply": "Order TPK-10007 has shipped with J&T, tracking number JT9900010007. Estimated delivery: 2026-10-05. Items: 2 x Pantai Sandal (EU 39).",
-      "trace_id": "tr_mutn1pz8493338d85ede"
+      "trace_id": "tr_mutnpvstbea962c12cbd"
     },
     {
       "id": "amb-02",
@@ -974,9 +974,9 @@
       "injection_flagged": false,
       "jev_disagreement": 0,
       "jev_status": [
-        "disabled",
-        "disabled",
-        "disabled"
+        "ok",
+        "ok",
+        "ok"
       ],
       "latency_ms": [
         0,
@@ -984,7 +984,7 @@
         0
       ],
       "reply": "Order TPK-10022 has shipped with JNE, tracking number JNE7700100022. Estimated delivery: 2026-10-05. Items: 1 x Angin Mesh Trainer (EU 37).",
-      "trace_id": "tr_mutn1pz8e6a2cae444a6"
+      "trace_id": "tr_mutnpvsv37d14be95b62"
     }
   ]
 }

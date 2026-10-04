@@ -1,0 +1,15 @@
+{
+  "name": "@tapak/native",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "icons": "tauri icon app-icon.png",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "android:init": "tauri android init",
+    "android:build": "tauri android build --debug --apk"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0"
+  }
+}

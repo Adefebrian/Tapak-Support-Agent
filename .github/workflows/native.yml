@@ -1,0 +1,96 @@
+name: native
+
+# Thin-client builds of the same web bundle. Binaries are published as workflow artifacts,
+# never committed and never added to the submission ZIP.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+          - platform: windows-latest
+            args: ""
+            rust_targets: ""
+          - platform: ubuntu-22.04
+            args: ""
+            rust_targets: ""
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri -> target
+      - name: Linux system deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - run: bun install --frozen-lockfile
+      - run: bun install
+        working-directory: apps/native
+      - name: Build
+        working-directory: apps/native
+        run: bunx tauri build ${{ matrix.args }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tapak-${{ matrix.platform }}
+          path: |
+            apps/native/src-tauri/target/**/release/bundle/dmg/*.dmg
+            apps/native/src-tauri/target/**/release/bundle/msi/*.msi
+            apps/native/src-tauri/target/**/release/bundle/nsis/*.exe
+            apps/native/src-tauri/target/**/release/bundle/appimage/*.AppImage
+            apps/native/src-tauri/target/**/release/bundle/deb/*.deb
+          if-no-files-found: warn
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: NDK
+        run: sdkmanager "ndk;27.0.12077973" "platforms;android-34" "build-tools;34.0.0"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+      - run: bun install --frozen-lockfile
+      - run: bun install
+        working-directory: apps/native
+      - name: Init and build debug APK
+        working-directory: apps/native
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+        run: |
+          bunx tauri android init --ci
+          # The emulator reaches the host backend over plain HTTP at 10.0.2.2:8787.
+          sed -i 's/<application/<application android:usesCleartextTraffic="true"/' src-tauri/gen/android/app/src/main/AndroidManifest.xml
+          bunx tauri android build --debug --apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tapak-android-debug-apk
+          path: apps/native/src-tauri/gen/android/app/build/outputs/apk/**/*.apk

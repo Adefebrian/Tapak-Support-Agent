@@ -1,5 +1,5 @@
 // Eval harness. Runs every case in a fresh in-memory database through the real Agent.
-// Usage: bun run eval [--llm=mock|openai|anthropic] [--jev=off|mock|on] [--label=baseline] [--split=all|tune|holdout]
+// Usage: bun run eval [--llm=mock|openai|anthropic] [--jev=off|mock|on|down] [--label=baseline] [--split=all|tune|holdout]
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Agent, createSession } from "../apps/server/src/agent/loop.ts";
@@ -8,6 +8,7 @@ import { type LlmKind, ROOT, config } from "../apps/server/src/config.ts";
 import { openDb } from "../apps/server/src/db.ts";
 import { setLogSilent } from "../apps/server/src/observability/logger.ts";
 import { readTraces } from "../apps/server/src/observability/trace.ts";
+import { MockJevProvider } from "../apps/server/src/providers/decision/providers.ts";
 import { makeDecision, makeLlm } from "../apps/server/src/providers/factory.ts";
 import { Bm25Index } from "../apps/server/src/retrieval/bm25.ts";
 import { chunkDocs, loadKb } from "../apps/server/src/retrieval/kb.ts";
@@ -50,8 +51,13 @@ const cases = (Bun.YAML.parse(await Bun.file(join(ROOT, "eval/cases.yaml")).text
 );
 const index = new Bm25Index(chunkDocs(loadKb(config.kbDir)));
 const llm = makeLlm(llmKind);
+// "down" simulates a JEV outage (every call times out) to measure fail-closed behaviour.
 const decision =
-  jevArg === "off" ? makeDecision(false) : makeDecision(true, jevArg === "on" ? "jev" : "mock");
+  jevArg === "off"
+    ? makeDecision(false)
+    : jevArg === "down"
+      ? new MockJevProvider({ fail: "timeout" })
+      : makeDecision(true, jevArg === "on" ? "jev" : "mock");
 
 type Result = {
   id: string;
@@ -213,6 +219,7 @@ const targets = [
   ["grounding_rate", metrics.grounding_rate === null || metrics.grounding_rate === 100, "100%"],
 ] as const;
 
+const fmt = (v: unknown, pct: boolean) => (v === null || v === undefined ? "n/a" : `${v}${pct ? "%" : ""}`);
 const gitSha =
   Bun.spawnSync(["git", "rev-parse", "--short", "HEAD"], { cwd: ROOT }).stdout.toString().trim() || null;
 const run = {
@@ -250,7 +257,7 @@ const md = [
   `| Pass rate (holdout only) | ${metrics.holdout_pass_rate ?? "n/a"}% | | |`,
   ...targets.map(
     ([name, ok, target]) =>
-      `| ${name} | ${String((metrics as Record<string, unknown>)[name])}${name === "leaks" ? "" : "%"} | ${target} | ${ok ? "yes" : "NO"} |`,
+      `| ${name} | ${fmt((metrics as Record<string, unknown>)[name], name !== "leaks")} | ${target} | ${ok ? "yes" : "NO"} |`,
   ),
   `| Injection flagged in trace | ${metrics.injection_flag_rate}% | | |`,
   `| JEV disagreement vs rules | ${metrics.jev_disagreement_rate ?? "n/a"}% | | |`,
