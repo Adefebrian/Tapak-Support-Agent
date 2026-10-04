@@ -138,3 +138,12 @@ describe("live mode", () => {
     expect(redact("sk-ant-api03-abcdefghijklmnopqrstuv")).toBe("[api_key]");
   });
 });
+
+describe("ALLOW_BYOK parsing", () => {
+  test("common spellings of on and off are understood; anything else keeps the default (on)", async () => {
+    const { bool } = await import("../src/config.ts");
+    for (const v of ["1", "true", "TRUE", " true ", '"true"', "yes", "on"]) expect(bool(v, false)).toBe(true);
+    for (const v of ["0", "false", "False", "no", "off", "'false'"]) expect(bool(v, true)).toBe(false);
+    for (const v of [undefined, "", "maybe"]) expect(bool(v, true)).toBe(true);
+  });
+});

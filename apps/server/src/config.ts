@@ -3,9 +3,17 @@ import { resolve } from "node:path";
 // Repo root, resolved from this file so scripts work from any cwd.
 export const ROOT = resolve(import.meta.dir, "../../..");
 
-function bool(v: string | undefined, fallback: boolean): boolean {
-  if (v === undefined || v === "") return fallback;
-  return v === "1" || v.toLowerCase() === "true";
+// Tolerant of the usual ways people write a flag (TRUE, yes, on, "true", trailing spaces). Anything not
+// recognised falls back to the default instead of silently switching the feature off.
+export function bool(v: string | undefined, fallback: boolean): boolean {
+  const s = (v ?? "")
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .trim()
+    .toLowerCase();
+  if (["1", "true", "yes", "on"].includes(s)) return true;
+  if (["0", "false", "no", "off"].includes(s)) return false;
+  return fallback;
 }
 
 export type LlmKind = "mock" | "openai" | "anthropic";
