@@ -5,6 +5,7 @@ import { openDb } from "./db.ts";
 import { createApp } from "./http/app.ts";
 import { log } from "./observability/logger.ts";
 import { makeDecision, makeLlm } from "./providers/factory.ts";
+import { sweepExpired } from "./providers/runtime.ts";
 import { Bm25Index } from "./retrieval/bm25.ts";
 import { chunkDocs, loadKb } from "./retrieval/kb.ts";
 
@@ -45,6 +46,9 @@ app.get("*", async (c) => {
     headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" },
   });
 });
+
+// Live-mode keys expire after an hour; drop them from memory promptly.
+setInterval(sweepExpired, 5 * 60 * 1000).unref();
 
 Bun.serve({ port: config.port, fetch: app.fetch });
 log("info", "server_started", {

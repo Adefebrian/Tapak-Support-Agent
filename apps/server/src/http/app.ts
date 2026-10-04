@@ -11,6 +11,7 @@ import { log } from "../observability/logger.ts";
 import { newTraceId, readTraces } from "../observability/trace.ts";
 import type { DecisionProvider } from "../providers/decision/types.ts";
 import type { LLMProvider } from "../providers/llm/types.ts";
+import { LiveConfigSchema, bindProviders, buildLiveProviders, providersFor } from "../providers/runtime.ts";
 import type { Bm25Index } from "../retrieval/bm25.ts";
 
 const SessionId = z.string().regex(/^ses_[a-f0-9]{20}$/);
@@ -43,12 +44,22 @@ export type AppDeps = {
   llm: LLMProvider;
   decision: DecisionProvider;
   rateLimiter?: RateLimiter;
+  // Injected in tests so live-key validation never leaves the process.
+  liveFetch?: typeof fetch;
 };
 
 const TAURI_ORIGINS = ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"];
 
 export function createApp(deps: AppDeps) {
-  const agent = new Agent(deps);
+  const defaultAgent = new Agent(deps);
+  // A session started in live mode carries its own providers; everything else (guards, tools, DB) is shared.
+  const agentFor = (sessionId: string) => {
+    const p = providersFor(sessionId);
+    if (!p) return defaultAgent;
+    return new Agent({ ...deps, llm: p.llm ?? deps.llm, decision: p.decision ?? deps.decision });
+  };
+  // Key checks are rate limited separately so the endpoint cannot be used as a key-testing oracle.
+  const keyCheckLimiter = new RateLimiter(10);
   const limiter = deps.rateLimiter ?? new RateLimiter(config.limits.ratePerMinute);
   const allowed = new Set([...config.corsOrigins, ...TAURI_ORIGINS]);
   const app = new Hono<{ Variables: { traceId: string } }>();
@@ -84,10 +95,33 @@ export function createApp(deps: AppDeps) {
       db,
       llm: `${deps.llm.name}:${deps.llm.model}`,
       jev: deps.decision.name,
+      live_mode_available: config.allowByok,
     });
   });
 
-  api.post("/sessions", (c) => c.json({ session_id: createSession(deps.db) }, 201));
+  api.post("/sessions", async (c) => {
+    const raw = await c.req.text();
+    if (!raw.trim()) return c.json({ session_id: createSession(deps.db), mode: "default" }, 201);
+    let body: unknown;
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      return c.json({ error: "invalid_json" }, 400);
+    }
+    const cfg = LiveConfigSchema.safeParse(body);
+    if (!cfg.success) return c.json({ error: "invalid_live_config" }, 400);
+    if (!cfg.data.llm && !cfg.data.jev)
+      return c.json({ session_id: createSession(deps.db), mode: "default" }, 201);
+    if (!config.allowByok) return c.json({ error: "live_mode_disabled" }, 403);
+    if (!keyCheckLimiter.allow("byok")) return c.json({ error: "rate_limited", retry_after_s: 60 }, 429);
+
+    const built = await buildLiveProviders(cfg.data, deps.liveFetch);
+    if (!built.ok) return c.json({ error: built.error }, 400);
+    const id = createSession(deps.db);
+    bindProviders(id, built.providers);
+    log("info", "live_session", { session_id: id, providers: built.providers.label });
+    return c.json({ session_id: id, mode: built.providers.label }, 201);
+  });
 
   // Shared validation for both the JSON and the streaming endpoint.
   async function readTurn(c: Context): Promise<{ id: string; message: string } | Response> {
@@ -115,7 +149,7 @@ export function createApp(deps: AppDeps) {
     const t = await readTurn(c);
     if (t instanceof Response) return t;
     try {
-      const res = MessageResponseSchema.parse(await agent.handleTurn(t.id, t.message));
+      const res = MessageResponseSchema.parse(await agentFor(t.id).handleTurn(t.id, t.message));
       c.header("x-trace-id", res.trace_id);
       return c.json(res);
     } catch (e) {
@@ -132,7 +166,7 @@ export function createApp(deps: AppDeps) {
       const pending: Promise<void>[] = [];
       try {
         const res = MessageResponseSchema.parse(
-          await agent.handleTurn(t.id, t.message, (e) => {
+          await agentFor(t.id).handleTurn(t.id, t.message, (e) => {
             pending.push(stream.writeSSE({ event: "stage", data: JSON.stringify(e) }));
           }),
         );
@@ -229,7 +263,9 @@ export function createApp(deps: AppDeps) {
       "SELECT stage, latency_ms FROM traces WHERE stage IN ('decision.jev','retrieval','tool_call','llm')",
     );
     const byStage: Record<string, number[]> = {};
-    for (const r of stageRows) (byStage[r.stage] ??= []).push(r.latency_ms);
+    for (const r of stageRows) {
+      byStage[r.stage] = [...(byStage[r.stage] ?? []), r.latency_ms];
+    }
     const stage_latency_ms = Object.fromEntries(
       Object.entries(byStage).map(([k, v]) => [k, { p50: pctOf(v, 0.5), p95: pctOf(v, 0.95), n: v.length }]),
     );

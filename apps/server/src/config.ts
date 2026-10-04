@@ -50,5 +50,7 @@ export const config = {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),
+  // Live mode (bring your own key per session). Turn off for any shared or public deployment.
+  allowByok: bool(process.env.ALLOW_BYOK, true),
   promptVersion: "p-2026-10-04.1",
 };

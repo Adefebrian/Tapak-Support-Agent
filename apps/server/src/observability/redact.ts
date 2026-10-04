@@ -7,6 +7,8 @@ const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 const PHONE = /(?<![A-Za-z0-9])(?:\+\d{1,3}[\s-]?\d{2,4}|0\d{2,4})[\s-]?\d{3,4}[\s-]?\d{3,5}\b/g;
 // Street addresses: "Jl." / "Jalan" followed by a name and a number.
 const ADDRESS = /\b(?:Jl\.?|Jalan)\s+[A-Za-z .'-]{2,40}\s+\d{1,4}[A-Za-z]?(?:,\s*[A-Za-z .]{2,40})*/g;
+// API keys (OpenAI, Anthropic, TypeSafe/JEV): never logged even if one ends up in a message.
+const API_KEY = /\b(?:sk-(?:ant-|proj-)?[A-Za-z0-9_-]{16,}|apikey_[A-Za-z0-9_-]{8,})\b/g;
 // Order IDs are not PII and must stay readable in traces.
 const ORDER_ID = /\bTPK-\d{5}\b/g;
 
@@ -17,6 +19,7 @@ export function redact(text: string): string {
     return `\uE000${keep.length - 1}\uE000`;
   });
   return masked
+    .replace(API_KEY, "[api_key]")
     .replace(EMAIL, "[email]")
     .replace(ADDRESS, "[address]")
     .replace(PHONE, (m) => (m.replace(/\D/g, "").length >= 9 ? "[phone]" : m))
