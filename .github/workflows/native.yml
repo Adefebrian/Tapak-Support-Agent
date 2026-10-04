@@ -92,8 +92,9 @@ jobs:
         working-directory: apps/native
         run: |
           bunx tauri android init --ci
-          # The emulator reaches the host backend over plain HTTP at 10.0.2.2:8787.
-          sed -i 's/<application/<application android:usesCleartextTraffic="true"/' src-tauri/gen/android/app/src/main/AndroidManifest.xml
+          # Tauri's template already allows plain HTTP in debug builds, which the emulator needs to reach
+          # the host backend at 10.0.2.2:8787. Adding the attribute again breaks the manifest.
+          grep -n "usesCleartextTraffic" src-tauri/gen/android/app/src/main/AndroidManifest.xml
           bunx tauri android build --debug --apk
       - uses: actions/upload-artifact@v4
         with:
