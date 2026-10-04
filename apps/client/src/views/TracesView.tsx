@@ -19,6 +19,9 @@ function summarize(e: TraceEvent): string {
     .replace(/,(?=[a-z_]+: )/g, ", ");
 }
 
+const pct = (v: number | null | undefined) =>
+  v === null || v === undefined ? "n/a" : `${Math.round(v * 100)}%`;
+
 export function TracesView() {
   const reduce = useReducedMotion();
   const [sessions, setSessions] = useState<{ id: string; created_at: string; messages: number }[]>([]);
@@ -55,60 +58,53 @@ export function TracesView() {
   }, [events]);
 
   const maxGuard = Math.max(1, ...(metrics?.guardrails.map((g) => g.n) ?? [1]));
+  const kpis: [string, string, boolean?][] = metrics
+    ? [
+        ["Turns recorded", String(metrics.turns)],
+        ["Escalation rate", pct(metrics.escalation_rate), true],
+        ["Clarify rate", pct(metrics.clarify_rate)],
+        ["Latency p95", `${metrics.latency_ms.p95} ms`],
+        ["Schema failures", pct(metrics.llm_schema_failure_rate)],
+        ["Empty retrieval", pct(metrics.retrieval_empty_rate)],
+        ["Tokens per session", String(metrics.tokens_per_session)],
+        ["JEV disagreement", pct(metrics.jev_disagreement_rate)],
+      ]
+    : [];
 
   return (
-    <div>
+    <div className="page">
       <div className="page-head">
-        <div>
+        <div className="page-head-text">
           <h1 className="h1">Traces</h1>
           <p className="lede">
             Every turn can be rebuilt from its trace: what came in, what was retrieved, which tools ran, which
-            guard fired, and why. PII is redacted before it is written.
+            guard fired, and why. Personal data is redacted before anything is written.
           </p>
         </div>
       </div>
 
       {metrics && (
-        <div className="kpis">
-          <div className="kpi">
-            <div className="kpi-label">Turns recorded</div>
-            <div className="kpi-value">{metrics.turns}</div>
-          </div>
-          <div className="kpi">
-            <div className="kpi-label">Escalation rate</div>
-            <div className="kpi-value orange">{Math.round(metrics.escalation_rate * 100)}%</div>
-          </div>
-          <div className="kpi">
-            <div className="kpi-label">Latency p95</div>
-            <div className="kpi-value">{metrics.latency_ms.p95} ms</div>
-          </div>
-          <div className="kpi">
-            <div className="kpi-label">JEV disagreement</div>
-            <div className="kpi-value">
-              {metrics.jev_disagreement_rate === null
-                ? "off"
-                : `${Math.round(metrics.jev_disagreement_rate * 100)}%`}
+        <div className="kpis kpis-8">
+          {kpis.map(([label, value, orange]) => (
+            <div className="kpi" key={label}>
+              <div className="kpi-label">{label}</div>
+              <div className={`kpi-value ${orange ? "orange" : ""}`}>{value}</div>
             </div>
-          </div>
+          ))}
         </div>
       )}
 
       {metrics && metrics.guardrails.length > 0 && (
-        <section className="panel" style={{ marginBottom: 16 }} aria-label="Guardrails fired">
+        <section className="panel" aria-label="Guardrails fired">
           <div className="panel-head">
             <h2 className="panel-title">Guardrails fired</h2>
+            <span className="muted small">count across all turns</span>
           </div>
-          <div style={{ padding: 16, display: "grid", gap: 8 }}>
+          <div className="guard-bars">
             {metrics.guardrails.map((g, i) => (
-              <div
-                key={g.rule}
-                className="bar-row"
-                style={{ gridTemplateColumns: "minmax(0, 200px) minmax(0, 1fr) 36px" }}
-              >
-                <span className="mono" style={{ overflowWrap: "anywhere" }}>
-                  {g.rule}
-                </span>
-                <div className="bar-track" style={{ height: 8 }}>
+              <div key={g.rule} className="guard-row">
+                <span className="mono guard-name">{g.rule}</span>
+                <div className="bar-track">
                   <motion.div
                     className={`bar-fill ${i === 0 ? "orange" : ""}`}
                     initial={{ scaleX: 0 }}
@@ -120,9 +116,7 @@ export function TracesView() {
                     }}
                   />
                 </div>
-                <span className="mono muted" style={{ textAlign: "right" }}>
-                  {g.n}
-                </span>
+                <span className="mono muted bar-value">{g.n}</span>
               </div>
             ))}
           </div>
@@ -133,6 +127,7 @@ export function TracesView() {
         <section className="panel" aria-label="Sessions">
           <div className="panel-head">
             <h2 className="panel-title">Sessions</h2>
+            <span className="muted small">{sessions.length}</span>
           </div>
           <div className="session-list">
             {sessions.length === 0 && <div className="empty">No conversations yet.</div>}
@@ -144,15 +139,8 @@ export function TracesView() {
                 aria-current={s.id === active}
                 onClick={() => setActive(s.id)}
               >
-                <span
-                  className="mono"
-                  style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}
-                >
-                  {s.id}
-                </span>
-                <span className="muted" style={{ fontSize: 12, flexShrink: 0 }}>
-                  {timeAgo(s.created_at)}
-                </span>
+                <span className="mono ellipsis">{s.id}</span>
+                <span className="muted small nowrap">{timeAgo(s.created_at)}</span>
               </button>
             ))}
           </div>
@@ -179,7 +167,7 @@ export function TracesView() {
               <div key={turn} className="turn">
                 <div className="turn-head">
                   <strong>Turn {turn}</strong>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <div className="chip-row">
                     {out && (
                       <span
                         className={`chip ${out.action === "escalate" || out.action === "refuse" ? "chip-orange" : "chip-ink"}`}
@@ -195,8 +183,8 @@ export function TracesView() {
                     <motion.div
                       key={`${e.trace_id}-${i}`}
                       className="wf-row"
-                      initial={{ opacity: 0, x: reduce ? 0 : -6 }}
-                      animate={{ opacity: 1, x: 0 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
                       transition={{ delay: reduce ? 0 : i * 0.03, duration: 0.2 }}
                     >
                       <span className={`wf-stage ${e.stage === "guardrail" ? "flag" : ""}`}>

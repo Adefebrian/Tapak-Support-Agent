@@ -39,6 +39,9 @@ const SYNONYMS: Record<string, string> = {
   used: "worn",
   outside: "outdoor",
   socks: "sock",
+  waterproof: "water-resistant",
+  rain: "water-resistant",
+  wet: "water-resistant",
 };
 
 function stem(w: string): string {
@@ -60,7 +63,14 @@ export function tokenize(text: string): string[] {
   return out;
 }
 
-export type Hit = { chunkId: string; docId: string; title: string; text: string; score: number };
+export type Hit = {
+  chunkId: string;
+  docId: string;
+  title: string;
+  text: string;
+  score: number;
+  asks: string[];
+};
 
 // Okapi BM25 over paragraph chunks. ~13 docs makes a vector store unnecessary.
 export class Bm25Index {
@@ -102,6 +112,7 @@ export class Bm25Index {
         title: d.chunk.title,
         text: d.chunk.text,
         score: Math.round(score * 1000) / 1000,
+        asks: d.chunk.asks,
       };
     });
     // Best chunk per document, so top-k is k distinct documents.

@@ -2,6 +2,7 @@
 id: kb-promo-009
 title: Promotions and vouchers
 updated_at: 2026-09-01
+asks: Do you have a loyalty program? | Can I buy a gift card?
 ---
 # Promotions and vouchers
 

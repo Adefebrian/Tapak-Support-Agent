@@ -66,17 +66,18 @@ export function EscalationsView() {
   const open = items.filter((e) => e.status !== "resolved");
 
   return (
-    <div>
+    <div className="page">
       <div className="page-head">
-        <div>
+        <div className="page-head-text">
           <h1 className="h1">Escalation queue</h1>
           <p className="lede">
-            Every action the agent is not allowed to take lands here with its reason. The agent never refunds,
+            Everything the agent is not allowed to do lands here with its reason. The agent never refunds,
             cancels, or edits an order.
           </p>
         </div>
         <button type="button" className="btn btn-ghost" onClick={load}>
-          <Icon name="refresh" size={16} /> Refresh
+          <Icon name="refresh" size={16} />
+          Refresh
         </button>
       </div>
 
@@ -99,57 +100,60 @@ export function EscalationsView() {
         </div>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <Segmented label="Filter tickets" value={filter} options={FILTERS} onChange={setFilter} />
-      </div>
-
-      {error && (
-        <div className="error-banner" role="alert" style={{ margin: "0 0 16px" }}>
-          Cannot load the queue. Is the server running?
+      <div className="stack">
+        <div className="toolbar">
+          <Segmented label="Filter tickets" value={filter} options={FILTERS} onChange={setFilter} />
+          <span className="muted small">
+            {shown.length} of {items.length} tickets
+          </span>
         </div>
-      )}
 
-      <div className="esc-list">
-        <AnimatePresence initial={false} mode="popLayout">
-          {shown.map((e) => (
-            <motion.article
-              layout={!reduce}
-              key={e.id}
-              className="panel esc"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.22 }}
-            >
-              <div className="esc-top">
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", minWidth: 0 }}>
-                  <span className={`chip ${e.priority === "high" ? "chip-orange" : ""}`}>
-                    {e.priority === "high" ? "High priority" : "Normal"}
-                  </span>
-                  <span className="chip mono">{e.reason}</span>
-                  <span className="muted" style={{ fontSize: 13 }}>
-                    {timeAgo(e.created_at)}
-                  </span>
-                </div>
-                <Segmented
-                  label="Ticket status"
-                  value={e.status}
-                  options={STATUSES}
-                  onChange={(s) => update(e.id, s)}
-                />
-              </div>
-              <p className="esc-summary">{e.summary}</p>
-              <div className="muted mono" style={{ fontSize: 12, overflowWrap: "anywhere" }}>
-                {e.id} · session {e.session_id}
-              </div>
-            </motion.article>
-          ))}
-        </AnimatePresence>
-        {shown.length === 0 && !error && (
-          <div className="panel empty">
-            No tickets here. Try a refund request or a chargeback threat in the chat.
+        {error && (
+          <div className="error-banner" role="alert">
+            Cannot load the queue. Is the server running?
           </div>
         )}
+
+        <div className="esc-list">
+          <AnimatePresence initial={false} mode="popLayout">
+            {shown.map((e) => (
+              <motion.article
+                layout={!reduce}
+                key={e.id}
+                className="panel esc"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.22 }}
+              >
+                <div className="esc-top">
+                  <div className="chip-row">
+                    <span className={`chip ${e.priority === "high" ? "chip-orange" : ""}`}>
+                      {e.priority === "high" ? "High priority" : "Normal"}
+                    </span>
+                    <span className="chip mono">{e.reason}</span>
+                    <span className="muted small">{timeAgo(e.created_at)}</span>
+                  </div>
+                  <Segmented
+                    label="Ticket status"
+                    value={e.status}
+                    options={STATUSES}
+                    onChange={(s) => update(e.id, s)}
+                  />
+                </div>
+                <p className="esc-summary">{e.summary}</p>
+                <div className="muted mono small wrap">
+                  {e.id} · session {e.session_id}
+                </div>
+              </motion.article>
+            ))}
+          </AnimatePresence>
+          {shown.length === 0 && !error && (
+            <div className="panel empty">
+              No tickets here. Try a refund request or a chargeback threat in the chat.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

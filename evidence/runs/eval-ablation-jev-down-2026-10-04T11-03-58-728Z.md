@@ -1,6 +1,6 @@
 # Eval run: ablation-jev-down
 
-2026-10-04T10:07:45.246Z · git 2771753 · LLM mock:mock-deterministic-v1 · decision mock-jev · prompt p-2026-10-04.1 · split all
+2026-10-04T11:03:58.728Z · git 04217cf · LLM mock:mock-deterministic-v1 · decision mock-jev · prompt p-2026-10-04.1 · split all
 
 ## Metrics
 

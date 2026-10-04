@@ -2,6 +2,7 @@
 id: kb-worn-003
 title: Worn or used items
 updated_at: 2026-09-01
+asks: Is a sole that came apart covered by warranty? | How long is the return window?
 ---
 # Worn or used items
 

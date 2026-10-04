@@ -23,6 +23,12 @@ I built this project with an AI coding assistant (Claude, in Claude Code) as a p
 | An SVG architecture diagram with labels inside node boxes, and a packet drawn on top of the labels | Violated the no-overlap UI rule | Screenshot review and `ui_audit` | Redrawn on canvas, packet beneath the nodes |
 | A tab bar that clipped "Escalations" on phones, 40px tab targets, a composer wider than the form cap | UI rule violations | `ui_audit` at 5 widths | Bottom tab bar on mobile, 44px+ targets, capped chat column |
 | Google Fonts loaded from the CDN | The audit's page load stalled, and the native app would need the network | `ui_audit` timeout | Self-hosted Latin subset (ADR-12) |
+| A shoe-shaped mascot, then a grey outline for the human support agent | Weird and ugly, by my own review; the human had no personality | Looking at it | A robot agent (Tapi) and a full human character (Sari) with her own reactions |
+| Character poses that switched instantly between states | Felt mechanical, not smooth | Watching it | Damped-spring rig for every pose, eased blinks, anticipation before a hop, a Bezier path for the ticket with a landing bounce |
+| Optional suggestions field validated strictly (max 3) | One extra suggestion threw away a valid answer | Test | D-09, field loosened, trimmed by the guard |
+| Template replies like "I cannot issue refunds myself, so I have created a ticket" | Correct but robotic | Reading conversations end to end | Warmer, specific replies that say what was passed on, by when, and the ticket number |
+| A mock that answered with the first sentences of the top page | Often off-target ("US men's 9" returned unrelated rows) | Conversation probes | Extractive answers that pick the matching sentences or table row, with a phrase bonus for adjacent words |
+| New KB pages written with the phrase "return window" while the return policy page never used it | Broke existing answers | 8 tests failed at once | D-08, customer vocabulary on the source page, plus a retrieval benchmark floor in CI |
 | A static file handler using `normalize` | Not obviously safe against encoded `../` | Review | `resolve` + a containment check + safe decode, verified with raw `%2e%2e` requests |
 
 ## Things I deliberately did not let the AI decide

@@ -2,8 +2,11 @@
 id: kb-care-007
 title: Material care (leather, suede, mesh)
 updated_at: 2026-09-01
+asks: Is my shoe covered by warranty? | Which materials do your shoes use?
 ---
 # Material care
+
+How to clean dirty shoes and keep them in shape, by material.
 
 **Leather:** wipe with a damp cloth, let dry at room temperature, and condition every 2 to 3 months. Never put leather in a washing machine.
 

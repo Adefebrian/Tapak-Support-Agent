@@ -230,6 +230,13 @@ describe("regressions found by eval (evidence/DEFECTS.md)", () => {
     expect(r.citations).toContain("kb-care-007");
   });
 
+  test("D-07: asking where to find an order ID is answered, not met with a request for the order ID", async () => {
+    const h = harness();
+    const r = await h.agent.handleTurn(h.session(), "Where do I find my order ID?");
+    expect(r.action).toBe("answer");
+    expect(r.citations).toContain("kb-orders-021");
+  });
+
   test("D-05: injection without an order lookup gets the boundary reply, not a KB answer", async () => {
     const h = harness();
     const r = await h.agent.handleTurn(

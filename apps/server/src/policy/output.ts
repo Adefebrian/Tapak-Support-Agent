@@ -87,6 +87,7 @@ export function clarifyFinal(): Final {
     citations: [],
     confidence: 0,
     clarification_fields: ["details"],
+    suggestions: [],
   };
 }
 
@@ -99,5 +100,21 @@ function blockedFinal(): Final {
     citations: [],
     confidence: 0,
     clarification_fields: [],
+    suggestions: [],
   };
+}
+
+// Quick replies are model output too: same checks as the reply, and a bad one is dropped, not repaired.
+export function guardSuggestions(
+  list: string[],
+  customerText: string,
+  verifiedOrderId: string | null,
+): string[] {
+  const typed = new Set(extractOrderIds(customerText));
+  return list
+    .map((q) => q.trim())
+    .filter((q) => q.length >= 2 && q.length <= 80)
+    .filter((q) => !containsPii(q) && !ACTION_CLAIM.test(q) && !TRACKING_RE.test(q))
+    .filter((q) => extractOrderIds(q).every((id) => id === verifiedOrderId || typed.has(id)))
+    .slice(0, 3);
 }

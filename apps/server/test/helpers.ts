@@ -12,12 +12,19 @@ import { chunkDocs, loadKb } from "../src/retrieval/kb.ts";
 
 setLogSilent(true);
 
-export const index = new Bm25Index(chunkDocs(loadKb(config.kbDir)));
+export const kb = loadKb(config.kbDir);
+export const index = new Bm25Index(chunkDocs(kb));
 
 export function harness(opts: { llm?: LLMProvider; decision?: DecisionProvider } = {}) {
   const db = openDb(":memory:");
   seedDb(db);
-  const deps = { db, index, llm: opts.llm ?? new MockLlm(), decision: opts.decision ?? new NoopProvider() };
+  const deps = {
+    db,
+    index,
+    kb,
+    llm: opts.llm ?? new MockLlm(),
+    decision: opts.decision ?? new NoopProvider(),
+  };
   const agent = new Agent(deps);
   const session = () => createSession(db);
   return { db, deps, agent, session };

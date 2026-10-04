@@ -12,7 +12,7 @@ import {
   analyzeInput,
   riskierIntent,
 } from "../policy/input.ts";
-import { type GuardHit, clarifyFinal, guardOutput } from "../policy/output.ts";
+import { type GuardHit, clarifyFinal, guardOutput, guardSuggestions } from "../policy/output.ts";
 import type { DecisionProvider, PreDecision } from "../providers/decision/types.ts";
 import type { LLMProvider, LlmMessage } from "../providers/llm/types.ts";
 import type { Bm25Index, Hit } from "../retrieval/bm25.ts";
@@ -28,7 +28,7 @@ import {
   searchKb,
   withTimeout,
 } from "../tools/index.ts";
-import { ACTION_PHRASES, SYSTEM_PROMPT, PROMPT_TEMPLATES as T } from "./prompt.ts";
+import { ACTION_PHRASES, SUGGESTIONS, SYSTEM_PROMPT, PROMPT_TEMPLATES as T } from "./prompt.ts";
 import { type Final, type MessageResponse, parseStep } from "./schema.ts";
 
 export type AgentDeps = { db: Database; index: Bm25Index; llm: LLMProvider; decision: DecisionProvider };
@@ -56,8 +56,22 @@ export function sessionExists(db: Database, id: string): boolean {
   return db.query("SELECT 1 FROM sessions WHERE id = ?").get(id) !== null;
 }
 
-function templated(reply: string, action: Action, fields: string[] = [], citations: string[] = []): Final {
-  return { type: "final", reply, action, citations, confidence: 1, clarification_fields: fields };
+function templated(
+  reply: string,
+  action: Action,
+  fields: string[] = [],
+  citations: string[] = [],
+  suggestions: readonly string[] = [],
+): Final {
+  return {
+    type: "final",
+    reply,
+    action,
+    citations,
+    confidence: 1,
+    clarification_fields: fields,
+    suggestions: [...suggestions],
+  };
 }
 
 export class Agent {
@@ -152,12 +166,16 @@ export class Agent {
     } else {
       // Retrieval always runs before the model, so grounding is decided by code, not by the model's tool choice.
       const t0 = performance.now();
-      const kb = searchKb(ctx, message);
+      // A short follow-up ("and for exchanges?", "what about suede?") borrows the previous question's
+      // topic, so retrieval understands it in context.
+      const query = contextualQuery(message, history);
+      const kb = searchKb(ctx, query);
       const results = kb.data.results as { doc_id: string; score: number }[];
       trace.add(
         "retrieval",
         {
-          query: message,
+          query,
+          contextual: query !== message,
           top_k: results.map((r) => ({ doc_id: r.doc_id, score: r.score })),
           empty: results.length === 0,
         },
@@ -167,10 +185,24 @@ export class Agent {
       const needsKb = !(intent === "order_status" && (candidates.orderId || session.verified_order_id));
       if (needsKb && results.length === 0) {
         guards.push({ rule: "retrieval_empty", effect: "downgraded_to_clarify" });
-        outcome = { final: templated(T.outOfKb, "clarify", ["details"]), templated: true };
+        outcome = {
+          final: templated(T.outOfKb, "clarify", ["details"], [], SUGGESTIONS.outOfKb),
+          templated: true,
+        };
       } else {
         llmLabel = `${this.deps.llm.name}:${this.deps.llm.model}`;
-        outcome = await this.runModel(ctx, a, intent, candidates, session, history, message, trace, guards);
+        outcome = await this.runModel(
+          ctx,
+          a,
+          intent,
+          candidates,
+          session,
+          history,
+          message,
+          trace,
+          guards,
+          query,
+        );
       }
     }
 
@@ -247,6 +279,10 @@ export class Agent {
       const t0 = performance.now();
       const r = createEscalation(ctx, esc.reason, esc.priority, summary);
       escalationId = r.data.escalation_id as string;
+      // Every handover tells the customer exactly what to quote if they follow up.
+      if (!final.reply.includes(escalationId)) {
+        final = { ...final, reply: `${final.reply} Your ticket number is ${escalationId}.` };
+      }
       trace.add(
         "tool_call",
         {
@@ -261,6 +297,31 @@ export class Agent {
 
     for (const g of guards)
       trace.add("guardrail", { rule: g.rule, effect: g.effect, detail: g.detail ?? null });
+
+    // ---- interactive extras: quick replies and the order card --------------------
+    const finalVerified = verifiedId ? loadOrderView(db, verifiedId) : null;
+    const orderCard =
+      finalVerified &&
+      (final.action === "answer" || final.action === "escalate") &&
+      final.reply.includes(finalVerified.order_id)
+        ? finalVerified
+        : null;
+    const kbAsks = final.citations.flatMap((id) => ctx.retrieved.get(id)?.asks ?? []);
+    const asked = message.toLowerCase().replace(/[^a-z0-9 ]/g, "");
+    const candidatesQ = final.suggestions.length
+      ? final.suggestions
+      : orderCard
+        ? [...SUGGESTIONS.order]
+        : kbAsks.length
+          ? kbAsks
+          : final.action === "escalate"
+            ? [...SUGGESTIONS.escalated]
+            : [...SUGGESTIONS.fallback];
+    const suggestions = guardSuggestions(
+      candidatesQ.filter((q) => q.toLowerCase().replace(/[^a-z0-9 ]/g, "") !== asked),
+      ctx.customerText,
+      verifiedId,
+    );
 
     // ---- persist ----------------------------------------------------------------
     this.persistPending(sessionId, candidates, verifiedId);
@@ -300,6 +361,8 @@ export class Agent {
       action: final.action,
       citations: final.citations,
       escalation_id: escalationId,
+      suggestions,
+      order: orderCard,
       clarification_fields: final.action === "clarify" ? final.clarification_fields : [],
       trace_id: traceId,
       meta: {
@@ -333,8 +396,16 @@ export class Agent {
     if (intent === "complaint" || a.highPriority) {
       guards.push({ rule: "high_priority_keywords", effect: "escalated" });
       return {
-        final: templated(T.complaint, "escalate"),
+        final: templated(T.complaint, "escalate", [], [], SUGGESTIONS.complaint),
         escalate: { reason: "complaint_or_dispute", priority: "high" },
+        templated: true,
+      };
+    }
+    if (a.humanRequest) {
+      guards.push({ rule: "human_requested", effect: "escalated" });
+      return {
+        final: templated(T.human, "escalate", [], [], SUGGESTIONS.human),
+        escalate: { reason: "human_requested", priority: a.negativeTone ? "high" : "normal" },
         templated: true,
       };
     }
@@ -343,14 +414,20 @@ export class Agent {
       const priority: Priority = a.negativeTone ? "high" : "normal";
       guards.push({ rule: "action_not_automatable", effect: "escalated", detail: k });
       return {
-        final: templated(T.escalated(ACTION_PHRASES[k] ?? ACTION_PHRASES.other!, priority), "escalate"),
+        final: templated(
+          T.escalated(ACTION_PHRASES[k] ?? ACTION_PHRASES.other!, priority),
+          "escalate",
+          [],
+          [],
+          SUGGESTIONS.escalated,
+        ),
         escalate: { reason: `action_request:${k}`, priority },
         templated: true,
       };
     }
     if (a.medical || a.legalSafety) {
       guards.push({ rule: "medical_or_safety_advice", effect: "blocked" });
-      return { final: templated(T.medical, "refuse"), templated: true };
+      return { final: templated(T.medical, "refuse", [], [], SUGGESTIONS.medical), templated: true };
     }
     if (pre.status === "ok" && (pre.escalationScore ?? 0) >= config.escalationScoreThreshold) {
       guards.push({ rule: "jev_escalation_score", effect: "escalated", detail: String(pre.escalationScore) });
@@ -361,13 +438,16 @@ export class Agent {
         templated: true,
       };
     }
-    if (a.greeting) return { final: templated(T.greeting, "answer"), templated: true };
+    if (a.greeting)
+      return { final: templated(T.greeting, "answer", [], [], SUGGESTIONS.greeting), templated: true };
+    if (a.closing && !a.orderIds.length && !a.emails.length)
+      return { final: templated(T.closing, "answer", [], [], SUGGESTIONS.closing), templated: true };
 
     // An injection attempt with no legitimate order lookup gets a fixed boundary reply instead of a
     // best-effort KB answer (defect D-05). Order lookups still go through normal verification.
     if (a.injectionFlags.length && intent !== "order_status") {
       guards.push({ rule: "injection_boundary", effect: "blocked" });
-      return { final: templated(T.boundary, "refuse"), templated: true };
+      return { final: templated(T.boundary, "refuse", [], [], SUGGESTIONS.boundary), templated: true };
     }
 
     if (intent === "order_status") {
@@ -390,7 +470,10 @@ export class Agent {
             effect: "downgraded_to_clarify",
             detail: missing.join(","),
           });
-          return { final: templated(T.needOrderFields(missing), "clarify", missing), templated: true };
+          return {
+            final: templated(T.needOrderFields(missing), "clarify", missing, [], SUGGESTIONS.needOrderFields),
+            templated: true,
+          };
         }
       }
     }
@@ -407,6 +490,7 @@ export class Agent {
     message: string,
     trace: TurnTrace,
     guards: GuardHit[],
+    query: string = message,
   ): Promise<Outcome> {
     const { db, llm } = this.deps;
     const messages: LlmMessage[] = [...history, { role: "user", content: message }];
@@ -417,6 +501,7 @@ export class Agent {
       const verifiedOrder = this.currentVerified(db, ctx.sessionId);
       const llmCtx = {
         message,
+        query,
         analysis: { ...a, intent },
         candidates,
         verifiedOrder,
@@ -581,7 +666,13 @@ export class Agent {
         if (err === "args_not_from_customer") {
           guards.push({ rule: "tool_args_provenance", effect: "downgraded_to_clarify" });
           return {
-            final: templated(T.needOrderFields(["order_id", "email"]), "clarify", ["order_id", "email"]),
+            final: templated(
+              T.needOrderFields(["order_id", "email"]),
+              "clarify",
+              ["order_id", "email"],
+              [],
+              SUGGESTIONS.needOrderFields,
+            ),
             templated: true,
           };
         }
@@ -598,7 +689,16 @@ export class Agent {
               templated: true,
             };
           }
-          return { final: templated(T.notVerified(left), "clarify", ["order_id", "email"]), templated: true };
+          return {
+            final: templated(
+              T.notVerified(left),
+              "clarify",
+              ["order_id", "email"],
+              [],
+              SUGGESTIONS.notVerified,
+            ),
+            templated: true,
+          };
         }
       }
 
@@ -668,4 +768,18 @@ function summarizeOrderResult(r: { ok: boolean; data: Record<string, unknown> })
   if (!r.ok) return { error: r.data.error };
   const o = r.data.order as OrderView;
   return { status: o.status, items: o.items.length };
+}
+
+const FOLLOW_UP =
+  /^(and|what about|how about|also|same for|and for|what if|but)\b|\b(it|that|those|them|this one)\b/i;
+
+// The retrieval query for this turn. A short or referential follow-up is joined to the previous
+// customer question so "and for exchanges?" is searched as part of the returns conversation.
+export function contextualQuery(message: string, history: LlmMessage[]): string {
+  const words = message.trim().split(/\s+/).length;
+  if (words > 8 && !FOLLOW_UP.test(message)) return message;
+  if (words > 14) return message;
+  const prev = [...history].reverse().find((m) => m.role === "user")?.content;
+  if (!prev || !(words <= 5 || FOLLOW_UP.test(message))) return message;
+  return `${prev} ${message}`;
 }

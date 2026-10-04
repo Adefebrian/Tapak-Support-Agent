@@ -13,7 +13,8 @@
     "typecheck": "tsc -p apps/server --noEmit && tsc -p apps/client --noEmit",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "package": "mkdir -p dist && git archive --format=zip --prefix=tapak-support-agent/ -o dist/tapak-support-agent.zip HEAD"
+    "package": "mkdir -p dist && git archive --format=zip --prefix=tapak-support-agent/ -o dist/tapak-support-agent.zip HEAD",
+    "eval:retrieval": "bun run eval/retrieval.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

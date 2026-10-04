@@ -2,6 +2,7 @@
 id: kb-size-006
 title: Size guide (EU, US, UK)
 updated_at: 2026-09-01
+asks: Can I exchange for another size? | Which shoe is best for running? | Do leather models run narrow?
 ---
 # Size guide
 

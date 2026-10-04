@@ -1,0 +1,43 @@
+# Retrieval benchmark: question -> the KB page that should answer it.
+# style: direct = uses the page's own words; paraphrase = how a customer might say it instead.
+- { q: "How long is the return window?", doc: kb-returns-001, style: direct }
+- { q: "How many days do I have to send shoes back?", doc: kb-returns-001, style: paraphrase }
+- { q: "Can I get my money back if I don't like them?", doc: kb-returns-001, style: paraphrase }
+- { q: "How do size exchanges work?", doc: kb-exchange-002, style: direct }
+- { q: "These are too small, can I swap for a bigger pair?", doc: kb-exchange-002, style: paraphrase }
+- { q: "Can I return shoes I wore outside?", doc: kb-worn-003, style: direct }
+- { q: "I wore them twice, can they still go back?", doc: kb-worn-003, style: paraphrase }
+- { q: "How long does shipping take to Bandung?", doc: kb-shipping-004, style: direct }
+- { q: "When will a parcel reach Surabaya after it leaves?", doc: kb-shipping-004, style: paraphrase }
+- { q: "Which couriers do you use?", doc: kb-carriers-005, style: direct }
+- { q: "Who delivers the parcels?", doc: kb-carriers-005, style: paraphrase }
+- { q: "What EU size is a US men's 9?", doc: kb-size-006, style: direct }
+- { q: "My feet are 27 cm long, what should I order?", doc: kb-size-006, style: paraphrase }
+- { q: "How do I clean suede?", doc: kb-care-007, style: direct }
+- { q: "My white trainers got muddy, how do I wash them?", doc: kb-care-007, style: paraphrase }
+- { q: "What does the warranty cover?", doc: kb-warranty-008, style: direct }
+- { q: "The stitching came loose after a month, is that covered?", doc: kb-warranty-008, style: paraphrase }
+- { q: "Can I use two vouchers on one order?", doc: kb-promo-009, style: direct }
+- { q: "Can I stack discount codes?", doc: kb-promo-009, style: paraphrase }
+- { q: "Do you accept GoPay?", doc: kb-payment-010, style: direct }
+- { q: "Can I pay by bank transfer?", doc: kb-payment-010, style: paraphrase }
+- { q: "When will my pre-order ship?", doc: kb-preorder-011, style: direct }
+- { q: "I ordered something not released yet, when does it come?", doc: kb-preorder-011, style: paraphrase }
+- { q: "What are your support hours?", doc: kb-contact-012, style: direct }
+- { q: "When can I talk to a human?", doc: kb-contact-012, style: paraphrase }
+- { q: "Which shoes do you sell?", doc: kb-products-014, style: direct }
+- { q: "Do you make anything for kids?", doc: kb-products-014, style: paraphrase }
+- { q: "Which shoe is best for walking all day?", doc: kb-fit-015, style: direct }
+- { q: "I'm on my feet at work, what should I buy?", doc: kb-fit-015, style: paraphrase }
+- { q: "My shoes arrived damaged", doc: kb-damaged-016, style: direct }
+- { q: "You sent me the wrong colour", doc: kb-damaged-016, style: paraphrase }
+- { q: "Can I buy a gift card?", doc: kb-giftcard-017, style: direct }
+- { q: "I want to give Tapak credit as a present", doc: kb-giftcard-017, style: paraphrase }
+- { q: "How do Tapak Points work?", doc: kb-loyalty-018, style: direct }
+- { q: "Do I earn rewards when I shop?", doc: kb-loyalty-018, style: paraphrase }
+- { q: "Do you ship to Malaysia?", doc: kb-intl-019, style: direct }
+- { q: "Can you send to Singapore?", doc: kb-intl-019, style: paraphrase }
+- { q: "Do you have a store in Jakarta?", doc: kb-stores-020, style: direct }
+- { q: "Can I try them on somewhere before buying?", doc: kb-stores-020, style: paraphrase }
+- { q: "Where do I find my order ID?", doc: kb-orders-021, style: direct }
+- { q: "Can I change the delivery address before it ships?", doc: kb-orders-021, style: paraphrase }

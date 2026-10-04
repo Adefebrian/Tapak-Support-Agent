@@ -2,6 +2,7 @@
 id: kb-warranty-008
 title: Warranty
 updated_at: 2026-09-01
+asks: How do I care for suede? | What if my shoes arrived damaged?
 ---
 # Warranty
 

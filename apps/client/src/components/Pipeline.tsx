@@ -1,11 +1,10 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ACTION_LABEL, type Action, type TraceEvent } from "../lib/api.ts";
 import { Icon } from "./Icon.tsx";
 
 type StageKey = "input" | "decision" | "retrieval" | "llm" | "tools" | "guard" | "output";
-type StageState = "idle" | "ok" | "flag" | "skip";
-
+type StageState = "idle" | "active" | "ok" | "flag" | "skip";
 type StageView = {
   key: StageKey;
   label: string;
@@ -21,29 +20,14 @@ const STAGES: { key: StageKey; label: string; icon: string; idle: string }[] = [
     key: "input",
     label: "Input guard",
     icon: "shield",
-    idle: "Rules classify intent, flag injection, check verification",
+    idle: "Rules read intent, injection, and verification",
   },
-  {
-    key: "decision",
-    label: "Decision layer",
-    icon: "scale",
-    idle: "JEV advises intent and escalation; can only add caution",
-  },
+  { key: "decision", label: "Decision layer", icon: "scale", idle: "JEV may add caution, never remove it" },
   { key: "retrieval", label: "Retrieval", icon: "search", idle: "BM25 over the policy knowledge base" },
-  { key: "llm", label: "Model loop", icon: "spark", idle: "Structured JSON steps, validated by schema" },
-  { key: "tools", label: "Tools", icon: "wrench", idle: "Read-only tools; no refund or cancel tool exists" },
-  {
-    key: "guard",
-    label: "Output guard",
-    icon: "check",
-    idle: "Citations, PII, foreign order data, false claims",
-  },
-  {
-    key: "output",
-    label: "Response",
-    icon: "reply",
-    idle: "Final action: answer, clarify, refuse, or escalate",
-  },
+  { key: "llm", label: "Model loop", icon: "spark", idle: "JSON steps checked against a schema" },
+  { key: "tools", label: "Tools", icon: "wrench", idle: "Read only. No refund or cancel tool exists" },
+  { key: "guard", label: "Output guard", icon: "check", idle: "Citations, personal data, false claims" },
+  { key: "output", label: "Response", icon: "reply", idle: "Answer, clarify, refuse, or escalate" },
 ];
 
 const RULE_STAGE: Record<string, StageKey> = {
@@ -68,156 +52,117 @@ const RULE_STAGE: Record<string, StageKey> = {
 
 const human = (s: string) => s.replace(/_/g, " ");
 
-export function buildStages(events: TraceEvent[] | null): StageView[] {
-  if (!events)
-    return STAGES.map((s) => ({
-      key: s.key,
-      label: s.label,
-      icon: s.icon,
-      state: "idle",
-      detail: s.idle,
-      chips: [],
-    }));
+// Builds the stage list from whatever events have arrived so far. While the turn is running,
+// stages without events are idle; once the output event is in, they are marked skipped.
+export function buildStages(events: TraceEvent[]): StageView[] {
+  const done = events.some((e) => e.stage === "output");
   const by = (st: TraceEvent["stage"]) => events.filter((e) => e.stage === st);
   const guards = by("guardrail").map((e) => String(e.payload.rule));
   const guardsAt = (k: StageKey) => guards.filter((r) => (RULE_STAGE[r] ?? "guard") === k);
-
-  const input = by("input")[0]?.payload ?? {};
-  const jev = by("decision.jev");
+  const input = by("input")[0]?.payload;
+  const pre = by("decision.jev").find((e) => e.payload.type === "intent+escalation")?.payload;
+  const gr = by("decision.jev").find((e) => e.payload.type === "groundedness")?.payload;
   const retrieval = by("retrieval")[0]?.payload;
   const llm = by("llm");
   const tools = by("tool_call");
-  const out = by("output")[0]?.payload ?? {};
-
-  const view = (key: StageKey, base: Omit<StageView, "key" | "label" | "icon">): StageView => {
-    const s = STAGES.find((x) => x.key === key)!;
-    const flagged = guardsAt(key);
-    return {
-      key,
-      label: s.label,
-      icon: s.icon,
-      ...base,
-      state: flagged.length ? "flag" : base.state,
-      chips: [...flagged.map(human), ...base.chips],
-    };
-  };
-
-  const pre = jev.find((e) => e.payload.type === "intent+escalation")?.payload;
-  const gr = jev.find((e) => e.payload.type === "groundedness")?.payload;
+  const out = by("output")[0]?.payload;
   const top = (retrieval?.top_k as { doc_id: string; score: number }[] | undefined) ?? [];
   const maxScore = Math.max(1, ...top.map((t) => t.score));
+  const jevOff = !pre || pre.status === "disabled";
 
-  return [
-    view("input", {
-      state: "ok",
-      detail: `Intent ${human(String(input.rule_intent ?? "unknown"))}${(input.order_ids as string[] | undefined)?.length ? `, order ${(input.order_ids as string[]).join(", ")}` : ""}`,
-      chips: (input.injection_flags as string[] | undefined)?.map((f) => `injection: ${human(f)}`) ?? [],
-    }),
-    view("decision", {
-      state: !pre || pre.status === "disabled" ? "skip" : "ok",
-      detail:
-        !pre || pre.status === "disabled"
-          ? "JEV disabled (advisory layer off)"
-          : `${String(pre.status)}${pre.escalation_score != null ? `, escalation score ${Number(pre.escalation_score).toFixed(2)}` : ""}${gr?.score != null ? `, grounded ${Number(gr.score).toFixed(2)}` : ""}`,
-      chips: pre?.disagreement ? ["disagrees with rules"] : [],
-    }),
-    view("retrieval", {
-      state: retrieval ? "ok" : "skip",
-      detail: retrieval
-        ? top.length
-          ? `${top.length} document${top.length > 1 ? "s" : ""} above threshold`
-          : "Nothing relevant found"
-        : "Not needed for this route",
-      chips: [],
-      bars: top.map((t) => ({ label: t.doc_id, value: t.score, max: maxScore })),
-    }),
-    view("llm", {
-      state: llm.length ? "ok" : "skip",
-      detail: llm.length
-        ? `${llm.length} step${llm.length > 1 ? "s" : ""}, ${llm.every((e) => e.payload.schema_valid) ? "schema valid" : "schema error caught"}`
-        : "Skipped: decided deterministically",
-      chips: [],
-    }),
-    view("tools", {
-      state: tools.length ? "ok" : "skip",
-      detail: tools.length
-        ? tools
-            .map((t) => `${String(t.payload.tool)}${t.payload.by === "code" ? " (by code)" : ""}`)
-            .join(", ")
-        : "No tool call",
-      chips: [],
-    }),
-    view("guard", {
-      state: llm.length ? "ok" : "skip",
-      detail: llm.length
-        ? guardsAt("guard").length
-          ? "Draft corrected before sending"
-          : "Draft passed every check"
-        : "Templated reply, no model draft",
-      chips: [],
-    }),
-    view("output", {
-      state: out.action === "escalate" || out.action === "refuse" ? "flag" : "ok",
-      detail: `${ACTION_LABEL[(out.action as Action) ?? "clarify"]}${(out.citations as string[] | undefined)?.length ? `, cites ${(out.citations as string[]).join(", ")}` : ""}`,
-      chips: [],
-    }),
-  ];
+  const seen: Record<StageKey, boolean> = {
+    input: !!input,
+    decision: !!pre,
+    retrieval: !!retrieval,
+    llm: llm.length > 0,
+    tools: tools.length > 0,
+    guard: done && llm.length > 0,
+    output: !!out,
+  };
+
+  const orderIds = (input?.order_ids as string[] | undefined) ?? [];
+  const citations = (out?.citations as string[] | undefined) ?? [];
+  const llmMs = llm.reduce((s, e) => s + e.latency_ms, 0);
+  const detail: Record<StageKey, string> = {
+    input: input
+      ? `Intent: ${human(String(input.rule_intent))}${orderIds.length ? `, order ${orderIds.join(", ")}` : ""}`
+      : "",
+    decision: jevOff
+      ? "Off for this session"
+      : `${String(pre?.status)}${pre?.escalation_score != null ? `, escalation ${Number(pre.escalation_score).toFixed(2)}` : ""}${gr?.score != null ? `, grounded ${Number(gr.score).toFixed(2)}` : ""}`,
+    retrieval: retrieval
+      ? top.length
+        ? `${top.length} relevant document${top.length > 1 ? "s" : ""}`
+        : "Nothing relevant found"
+      : "Not needed for this route",
+    llm: llm.length
+      ? `${llm.length} step${llm.length > 1 ? "s" : ""}, ${llm.every((e) => e.payload.schema_valid) ? "valid JSON" : "schema error caught"}${llmMs > 0 ? `, ${llmMs} ms` : ""}`
+      : "Not called: decided by rules",
+    tools: tools.length
+      ? tools.map((t) => `${String(t.payload.tool)}${t.payload.by === "code" ? " (by code)" : ""}`).join(", ")
+      : "No tool needed",
+    guard: llm.length
+      ? guardsAt("guard").length
+        ? "Draft corrected before sending"
+        : "Draft passed every check"
+      : "Fixed reply, no draft to check",
+    output: out
+      ? `${ACTION_LABEL[(out.action as Action) ?? "clarify"]}${citations.length ? `, cites ${citations.join(", ")}` : ""}`
+      : "",
+  };
+
+  const firstPending = STAGES.findIndex((s) => !seen[s.key]);
+  return STAGES.map((s, i) => {
+    const flagged = guardsAt(s.key);
+    let state: StageState;
+    if (seen[s.key]) {
+      const handedOff = s.key === "output" && (out?.action === "escalate" || out?.action === "refuse");
+      state = flagged.length || handedOff ? "flag" : "ok";
+      if (s.key === "decision" && jevOff) state = flagged.length ? "flag" : "skip";
+    } else if (done) state = flagged.length ? "flag" : "skip";
+    else state = events.length && i === firstPending ? "active" : "idle";
+    const shown = state !== "idle" && state !== "active";
+    const injection = s.key === "input" ? ((input?.injection_flags as string[] | undefined) ?? []) : [];
+    return {
+      key: s.key,
+      label: s.label,
+      icon: s.icon,
+      state,
+      detail: shown ? detail[s.key] : s.idle,
+      chips: shown
+        ? [
+            ...flagged.map(human),
+            ...injection.map((f) => `injection: ${human(f)}`),
+            ...(s.key === "decision" && pre?.disagreement ? ["disagrees with rules"] : []),
+          ]
+        : [],
+      bars:
+        s.key === "retrieval" && shown
+          ? top.map((t) => ({ label: t.doc_id, value: t.score, max: maxScore }))
+          : undefined,
+    };
+  });
 }
 
-const NODE_STYLE: Record<StageState, { bg: string; fg: string; border: string }> = {
+const NODE: Record<StageState, { bg: string; fg: string; border: string }> = {
   idle: { bg: "#ffffff", fg: "#85817a", border: "#e6e3dc" },
+  active: { bg: "#fff1ea", fg: "#c2410c", border: "#ff5a1f" },
   ok: { bg: "#0b0b0c", fg: "#ffffff", border: "#0b0b0c" },
   flag: { bg: "#ff5a1f", fg: "#ffffff", border: "#ff5a1f" },
   skip: { bg: "#f7f6f3", fg: "#b3afa7", border: "#e6e3dc" },
 };
 
-export function Pipeline({
-  events,
-  pending,
-  turnKey,
-}: { events: TraceEvent[] | null; pending: boolean; turnKey: string }) {
+export function Pipeline({ events, turnKey }: { events: TraceEvent[]; turnKey: string }) {
   const reduce = useReducedMotion();
   const stages = useMemo(() => buildStages(events), [events]);
-  const [revealed, setRevealed] = useState(events ? stages.length : 0);
-  const [scan, setScan] = useState(0);
-
-  // While waiting, a scanner walks the stages to show the turn is in flight.
-  useEffect(() => {
-    if (!pending) return;
-    setScan(0);
-    const id = setInterval(() => setScan((s) => (s + 1) % STAGES.length), reduce ? 900 : 320);
-    return () => clearInterval(id);
-  }, [pending, reduce]);
-
-  // When a trace arrives, replay the stages in order. turnKey restarts the replay for a new turn.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: turnKey is the intended trigger
-  useEffect(() => {
-    if (!events) {
-      setRevealed(0);
-      return;
-    }
-    if (reduce) {
-      setRevealed(stages.length);
-      return;
-    }
-    setRevealed(0);
-    let i = 0;
-    const id = setInterval(() => {
-      i++;
-      setRevealed(i);
-      if (i >= stages.length) clearInterval(id);
-    }, 230);
-    return () => clearInterval(id);
-  }, [turnKey, events, stages.length, reduce]);
 
   return (
     <ol className="stages" aria-live="polite">
       {stages.map((s, i) => {
-        const shown = events ? i < revealed : false;
-        const scanning = pending && scan === i;
-        const st: StageState = shown ? s.state : "idle";
-        const style = scanning ? { bg: "#fff1ea", fg: "#c2410c", border: "#ff5a1f" } : NODE_STYLE[st];
-        const last = i === stages.length - 1;
+        const style = NODE[s.state];
+        const next = stages[i + 1];
+        const filled = next !== undefined && next.state !== "idle" && next.state !== "active";
+        const pulsing = s.state === "active" && !reduce;
         return (
           <li key={s.key} className="stage">
             <div className="stage-track">
@@ -227,41 +172,47 @@ export function Pipeline({
                   backgroundColor: style.bg,
                   color: style.fg,
                   borderColor: style.border,
-                  scale: scanning ? 1.08 : 1,
+                  scale: pulsing ? [1, 1.08, 1] : 1,
                 }}
-                transition={{ duration: reduce ? 0 : 0.22 }}
+                transition={
+                  pulsing
+                    ? { scale: { duration: 0.8, repeat: Number.POSITIVE_INFINITY }, duration: 0.2 }
+                    : { duration: reduce ? 0 : 0.2 }
+                }
               >
                 <Icon name={s.icon} size={16} />
               </motion.div>
-              {!last && (
+              {next && (
                 <div className="stage-rail">
                   <motion.div
                     className="stage-rail-fill"
                     initial={false}
                     animate={{
-                      scaleY: shown && i + 1 < revealed ? 1 : 0,
-                      backgroundColor: stages[i + 1]?.state === "flag" ? "#ff5a1f" : "#0b0b0c",
+                      scaleY: filled ? 1 : 0,
+                      backgroundColor: next.state === "flag" ? "#ff5a1f" : "#0b0b0c",
                     }}
-                    transition={{ duration: reduce ? 0 : 0.22 }}
+                    transition={{ duration: reduce ? 0 : 0.2 }}
                   />
                 </div>
               )}
             </div>
             <div className="stage-body">
               <div className="stage-label">
-                <span style={{ color: st === "skip" ? "var(--ink-3)" : undefined }}>{s.label}</span>
-                {shown && st === "skip" && <span className="chip">skipped</span>}
+                <span className={s.state === "skip" || s.state === "idle" ? "muted" : undefined}>
+                  {s.label}
+                </span>
+                {s.state === "skip" && <span className="chip">skipped</span>}
               </div>
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
-                  key={shown ? `${turnKey}-on` : "off"}
-                  initial={{ opacity: 0, y: reduce ? 0 : 4 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  key={`${turnKey}-${s.state}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: reduce ? 0 : 0.2 }}
+                  transition={{ duration: reduce ? 0 : 0.15 }}
                 >
-                  <div className="stage-detail">{shown ? s.detail : STAGES[i]!.idle}</div>
-                  {shown && s.chips.length > 0 && (
+                  <div className="stage-detail">{s.detail}</div>
+                  {s.chips.length > 0 && (
                     <div className="stage-chips">
                       {s.chips.map((c) => (
                         <span key={c} className={`chip ${s.state === "flag" ? "chip-orange" : ""}`}>
@@ -270,13 +221,11 @@ export function Pipeline({
                       ))}
                     </div>
                   )}
-                  {shown &&
-                    s.bars?.map((b, bi) => (
-                      <div key={b.label} className="bar-row">
-                        <div>
-                          <div className="mono" style={{ marginBottom: 3 }}>
-                            {b.label}
-                          </div>
+                  {s.bars && s.bars.length > 0 && (
+                    <div className="bars">
+                      {s.bars.map((b, bi) => (
+                        <div key={b.label} className="bar-row">
+                          <span className="mono bar-label">{b.label}</span>
                           <div className="bar-track">
                             <motion.div
                               className={`bar-fill ${bi === 0 ? "orange" : ""}`}
@@ -289,12 +238,11 @@ export function Pipeline({
                               }}
                             />
                           </div>
+                          <span className="mono muted bar-value">{b.value.toFixed(1)}</span>
                         </div>
-                        <span className="mono muted" style={{ textAlign: "right" }}>
-                          {b.value.toFixed(1)}
-                        </span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               </AnimatePresence>
             </div>

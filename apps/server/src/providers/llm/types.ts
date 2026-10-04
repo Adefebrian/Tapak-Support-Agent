@@ -6,6 +6,8 @@ export type LlmMessage = { role: "user" | "assistant" | "tool"; content: string 
 // Structured view of the turn. Live providers ignore it; MockLlm uses it to behave deterministically.
 export type LlmContext = {
   message: string;
+  // The retrieval query: the message, plus the previous question when this one is a short follow-up.
+  query?: string;
   analysis: InputAnalysis;
   candidates: { orderId: string | null; email: string | null };
   verifiedOrder: OrderView | null;

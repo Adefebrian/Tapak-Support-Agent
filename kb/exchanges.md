@@ -2,6 +2,7 @@
 id: kb-exchange-002
 title: Size exchanges
 updated_at: 2026-09-01
+asks: Which size should I pick? | What if my size is out of stock? | How long is the return window?
 ---
 # Size exchanges
 

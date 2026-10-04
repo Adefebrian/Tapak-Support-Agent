@@ -41,17 +41,3 @@ export function Icon({
     </svg>
   );
 }
-
-export function Logo({ size = 32 }: { size?: number }) {
-  return (
-    <span className="logo" style={{ width: size, height: size }} aria-hidden="true">
-      <svg width={size * 0.72} height={size * 0.72} viewBox="5 3 22 26">
-        <path
-          d="M16 5.5c4.2 0 6.5 3.2 6.5 7.4 0 3.1-1.6 5.2-2.1 7.6-.5 2.4-.2 6-4.4 6s-3.9-3.6-4.4-6c-.5-2.4-2.1-4.5-2.1-7.6 0-4.2 2.3-7.4 6.5-7.4Z"
-          fill="#FF5A1F"
-          transform="rotate(-18 16 16)"
-        />
-      </svg>
-    </span>
-  );
-}

@@ -175,7 +175,7 @@ describe("conversation behaviour", () => {
   test("greeting gets the capability message", async () => {
     const h = harness();
     const r = await h.agent.handleTurn(h.session(), "hi");
-    expect(r.reply).toMatch(/order status/);
+    expect(r.reply).toMatch(/check an order/);
   });
 });
 

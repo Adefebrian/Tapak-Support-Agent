@@ -2,6 +2,7 @@
 id: kb-shipping-004
 title: Shipping times
 updated_at: 2026-09-01
+asks: Which couriers do you use? | Do you ship outside Indonesia? | Can I pick up my order in a store?
 ---
 # Shipping times
 

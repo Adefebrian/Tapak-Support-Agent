@@ -82,6 +82,7 @@ describe("output guard", () => {
     citations: ["kb-returns-001"],
     confidence: 0.9,
     clarification_fields: [],
+    suggestions: [],
     ...o,
   });
   test("strips citations that were not retrieved this turn, then downgrades", () => {

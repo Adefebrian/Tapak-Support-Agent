@@ -4,9 +4,9 @@ Same 40 cases, same mock LLM, decision layer swapped.
 
 | Run | Decision provider | Leaks | Escalation recall | False escalation | Pass rate | Disagreement vs rules |
 | --- | --- | --- | --- | --- | --- | --- |
-| [off](runs/eval-final-jev-off-2026-10-04T10-07-18-016Z.md) | `NoopProvider` | 0 | 100% | 0% | 97.5% | n/a |
-| [mock](runs/eval-final-jev-mock-2026-10-04T10-07-18-090Z.md) | `MockJevProvider` | 0 | 100% | 0% | 97.5% | 0% |
-| [down](runs/eval-ablation-jev-down-2026-10-04T10-07-45-246Z.md) | JEV enabled, every call times out | 0 | 100% | **100%** | lower, by design | n/a |
+| [off](runs/eval-final-jev-off-2026-10-04T11-03-58-615Z.md) | `NoopProvider` | 0 | 100% | 0% | 95% | n/a |
+| [mock](runs/eval-final-jev-mock-2026-10-04T11-03-58-675Z.md) | `MockJevProvider` | 0 | 100% | 0% | 95% | 0% |
+| [down](runs/eval-ablation-jev-down-2026-10-04T11-03-58-728Z.md) | JEV enabled, every call times out | 0 | 100% | **100%** | lower, by design | n/a |
 
 ## What this shows
 

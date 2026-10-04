@@ -79,8 +79,17 @@ const FIRST_PERSON_DEMAND =
 // "my shoes" alone is not order talk ("my shoes look dirty" is a care question, defect D-06);
 // it only counts when paired with a delivery verb.
 const ORDER_TALK =
-  /\b(my order|my package|my parcel|order status|where is|where's|track(ing)?|(has|have)(n't| not) (arrived|come)|not arrived|didn't (arrive|come)|never (arrived|came)|still waiting|not (yet )?(here|received)|when will (it|my|they)|belum sampai|shipment|delivered\?)/i;
-const GREETING_ONLY = /^\s*(hi|hello|hey|halo|good (morning|afternoon|evening))[\s!.]*$/i;
+  /\b(my order|my package|my parcel|order status|where is|where's|track(ing)?|(has|have)(n't| not) (arrived|come)|not arrived|didn't (arrive|come)|never (arrived|came)|(nothing|it|they|parcel|package|order) (has|have)(n't| not)? ?(come|arrived|shown up)|still nothing|hasn't shown up|still waiting|not (yet )?(here|received)|when will (it|my|they)|belum sampai|shipment|delivered\?)/i;
+// "Where do I find my order ID?" is a how-to question about orders, not a request to look one up (D-07).
+const ORDER_HOWTO =
+  /\b(where (do|can) i find|how (do|can) i find|what is|what's|i (lost|forgot|don't have|do not have)|find)\b.{0,12}\border (id|number)\b/i;
+const GREETING_ONLY = /^\s*(hi|hello|hey|halo|hai|good (morning|afternoon|evening))( there| tapi)?[\s!.]*$/i;
+// "Talk to a person" is always honoured: a customer who asks for a human gets one.
+const HUMAN_REQUEST =
+  /\b(talk|speak|chat) (to|with) (a |an |someone|somebody|real |actual |live )*(human|person|agent|staff|someone|somebody|representative|cs)\b|\b(real|actual|live) (person|human|agent)\b|\bhuman (please|agent)\b|\b(customer service|operator) please\b/i;
+// A closing message ("thanks!", "that's all") deserves a short, warm reply, not a policy search.
+const CLOSING =
+  /^\s*(thanks?( you)?|thank u|thx|ty|cheers|great|perfect|ok(ay)?|got it|cool|nice|that'?s (all|it|great|perfect)|no,? that'?s (all|it)|bye|goodbye|see you)([\s,!.]+(so much|a lot|tapi|very much|bye|again|that'?s all|that helps|great|perfect))*[\s!.]*$/i;
 const NEGATIVE =
   /\b(angry|upset|terrible|awful|disappointed|frustrated|annoyed|horrible|garbage|trash|wtf)\b/i;
 
@@ -98,6 +107,8 @@ export type InputAnalysis = {
   actionRequested: boolean;
   orderTalk: boolean;
   greeting: boolean;
+  humanRequest: boolean;
+  closing: boolean;
 };
 
 export function analyzeInput(text: string): InputAnalysis {
@@ -120,7 +131,7 @@ export function analyzeInput(text: string): InputAnalysis {
   if (highPriority) intent = "complaint";
   else if (actionRequested) intent = "action_request";
   else if (medical || legalSafety) intent = "out_of_scope";
-  else if (orderTalk) intent = "order_status";
+  else if (orderTalk && !(ORDER_HOWTO.test(text) && orderIds.length === 0)) intent = "order_status";
 
   return {
     length: text.length,
@@ -136,6 +147,8 @@ export function analyzeInput(text: string): InputAnalysis {
     actionRequested,
     orderTalk,
     greeting: GREETING_ONLY.test(text),
+    humanRequest: HUMAN_REQUEST.test(text),
+    closing: CLOSING.test(text),
   };
 }
 

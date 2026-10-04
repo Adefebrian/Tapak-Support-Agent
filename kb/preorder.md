@@ -2,6 +2,7 @@
 id: kb-preorder-011
 title: Pre-orders
 updated_at: 2026-09-01
+asks: Can I cancel a pre-order? | How long does shipping take?
 ---
 # Pre-orders
 

@@ -3,6 +3,7 @@ id: kb-sale-returns-013
 title: Returns on sale items (legacy page)
 updated_at: 2025-11-15
 status: superseded
+asks: How long is the return window?
 ---
 # Returns on sale items
 

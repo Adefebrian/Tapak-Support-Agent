@@ -2,6 +2,7 @@
 id: kb-carriers-005
 title: Carriers and tracking
 updated_at: 2026-09-01
+asks: How long does shipping take? | What happens if my parcel is lost?
 ---
 # Carriers and tracking
 

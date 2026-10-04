@@ -19,7 +19,7 @@ const docs = loadKb(config.kbDir);
 const index = new Bm25Index(chunkDocs(docs));
 const llm = makeLlm();
 const decision = makeDecision();
-const app = createApp({ db, index, llm, decision });
+const app = createApp({ db, index, llm, decision, kb: docs });
 
 // Static web client (built by apps/client/build.ts). SPA fallback to index.html.
 app.get("*", async (c) => {

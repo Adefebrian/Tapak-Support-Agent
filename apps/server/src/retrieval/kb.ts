@@ -6,9 +6,18 @@ export type KbDoc = {
   title: string;
   updated_at: string;
   status: "current" | "superseded";
+  // Follow-up questions a customer is likely to ask next; offered as quick replies.
+  asks: string[];
   body: string;
 };
-export type Chunk = { chunkId: string; docId: string; title: string; text: string; superseded: boolean };
+export type Chunk = {
+  chunkId: string;
+  docId: string;
+  title: string;
+  text: string;
+  superseded: boolean;
+  asks: string[];
+};
 
 function parseFrontmatter(raw: string, file: string): KbDoc {
   const m = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
@@ -25,6 +34,10 @@ function parseFrontmatter(raw: string, file: string): KbDoc {
     title: meta.title,
     updated_at: meta.updated_at,
     status: meta.status === "superseded" ? "superseded" : "current",
+    asks: (meta.asks ?? "")
+      .split("|")
+      .map((q) => q.trim())
+      .filter(Boolean),
     body: m[2]!.trim(),
   };
 }
@@ -59,6 +72,7 @@ export function chunkDocs(docs: KbDoc[]): Chunk[] {
         title: d.title,
         text: `${d.title}. ${p.trim()}`,
         superseded: d.status === "superseded",
+        asks: d.asks,
       });
     });
   }

@@ -6,7 +6,9 @@ Raw evidence:
 
 - First test run, before any fix: [runs/test-first-run.txt](runs/test-first-run.txt) (43 pass, 7 fail)
 - Baseline eval, before any tuning: [runs/eval-baseline-2026-10-04T09-47-40-593Z.md](runs/eval-baseline-2026-10-04T09-47-40-593Z.md)
-- Final eval: [runs/eval-final-jev-off-2026-10-04T10-07-18-016Z.md](runs/eval-final-jev-off-2026-10-04T10-07-18-016Z.md)
+- Final eval: [runs/eval-final-jev-off-2026-10-04T11-03-58-615Z.md](runs/eval-final-jev-off-2026-10-04T11-03-58-615Z.md)
+- Scenario matrix, first run with its 2 failures: [runs/scenarios-first-run.txt](runs/scenarios-first-run.txt); final: [runs/scenarios-final.txt](runs/scenarios-final.txt)
+- Retrieval benchmark: [runs/retrieval-bm25-baseline.md](runs/retrieval-bm25-baseline.md)
 
 | ID | Found by | Severity | Status |
 | --- | --- | --- | --- |
@@ -15,7 +17,12 @@ Raw evidence:
 | D-03 | Unit test (scenario 9) | Medium: multi-turn verification broken | Fixed |
 | D-04 | Baseline eval (ver-06), counted as a leak | High: a real order ID shown to an unverified user | Fixed |
 | D-05 | Baseline eval (inj-01) | Medium: injection answered with an unrelated policy | Fixed |
-| L-01 | Baseline eval (oos-04) | Low: off-topic question answered from a weak match | Open, documented |
+| D-06 | Coverage test for the search_kb branch | Medium: a care question asked for an order ID | Fixed |
+| D-07 | Manual probe after the KB grew | Medium: "where do I find my order ID?" answered by asking for the order ID | Fixed |
+| D-08 | Existing tests, the moment 8 KB pages were added | High: new pages outranked the return policy for "return window" | Fixed, plus a retrieval benchmark floor in CI |
+| D-09 | Test for model-written follow-up suggestions | Medium: one cosmetic field over its limit threw away a valid answer | Fixed |
+| D-10 | Scenario matrix, first run | Medium: "I ordered last week and nothing has come" not treated as an order question | Fixed |
+| L-01 | Baseline eval (oos-04), later also oos-03 | Low: off-topic question answered from a weak match | Open, documented |
 | L-02 | Manual probe while writing the README | Medium: paraphrased refund request not escalated | Open, documented |
 
 ---
@@ -84,9 +91,61 @@ The lesson for the walkthrough: a guard that only gets tested for "does it block
 
 **Re-run.** inj-01 passes. All 5 injection cases pass and 100% are flagged in the trace.
 
+## D-06: A care question asked for an order ID
+
+**Symptom.** "My shoes look dirty, how do I clean suede?" got "To look up an order I need your order ID".
+
+**Trigger.** Found while writing the coverage test for the model's own `search_kb` call.
+
+**Root cause.** The order-talk pattern included the bare phrase "my shoes", so any sentence about the customer's shoes became an order lookup.
+
+**Fix.** "my shoes" only counts when it comes with a delivery verb ("haven't arrived", "never came").
+
+**Regression test.** "D-06: a care question that mentions 'my shoes' is not treated as an order lookup".
+
+## D-07: "Where do I find my order ID?" was answered with "I need your order ID"
+
+**Symptom.** The agent asked the customer for the very thing they were asking how to find. It's also one of our own quick-reply suggestions, so the agent was sending people into a loop.
+
+**Root cause.** "my order" made it an order lookup, and with no ID in the message, verification asked for one.
+
+**Fix.** A how-to pattern (`where do I find / I don't have / I lost ... order ID`) without an actual ID is a policy question, answered from the new page `kb-orders-021`.
+
+**Regression test.** "D-07: asking where to find an order ID is answered, not met with a request for the order ID".
+
+## D-08: Growing the knowledge base broke retrieval for existing questions
+
+**Symptom.** After adding 8 pages (catalog, fit guide, damaged items, gift cards, loyalty, international, stores, orders), 8 existing tests failed at once. "How long is the return window?" now retrieved the loyalty, damaged-items, and stores pages first.
+
+**Root cause.** The new pages used the phrase "return window" ("once the return window has mostly passed", "the normal 30-day window"), while the return policy page itself never used the word "window". Customers use the customers' word, and the source page didn't. The same thing later broke "What time is support open?" because the support page said "works", not "open".
+
+**Fix.** The source pages now use the words customers use ("The return window is 30 days...", "Support opening times and contact"). The international page stopped repeating "return".
+
+**Guardrail added.** A retrieval benchmark (`eval/retrieval.yaml`, 41 labelled questions, half of them paraphrased) runs as a test with a floor: at most one direct-wording question may fall out of the top 3, and overall hit@3 must stay at or above 80%. Any future page that steals a question fails CI before it ships.
+
+## D-09: A cosmetic field could throw away a valid answer
+
+**Symptom.** In a test where the model returned a correct, cited answer with four suggested follow-ups, the customer got a generic "I could not find a reliable answer" instead.
+
+**Root cause.** The schema allowed at most three suggestions, so the whole step failed validation, was retried, failed again, and fell back to clarify. Strictness on an optional extra cost the customer a correct answer.
+
+**Fix.** The schema accepts the field loosely. The output guard trims it to three and drops any suggestion with personal data, order data, or claimed actions.
+
+**Regression test.** "model-written suggestions pass the same guard as the reply".
+
+## D-10: A common way of saying "my order is late" wasn't recognised
+
+**Symptom.** "I ordered last week and nothing has come" was answered from the shipping page instead of asking for the order ID and email.
+
+**Trigger.** The first run of the 52-case scenario matrix (`runs/scenarios-first-run.txt`, 50/52).
+
+**Fix.** The delivery-delay pattern now covers "nothing/it/they/my parcel has(n't) come/arrived/shown up" and "still nothing".
+
+**Regression test.** The scenario matrix row itself.
+
 ## L-01 (open): An off-topic question is answered from a weak lexical match
 
-**Symptom.** oos-04 "Do you have a store in Singapore?" returned the warranty text, because the warranty page mentions "store credit".
+**Symptom.** oos-04 "Do you have a store in Singapore?" returned the warranty text, because the warranty page mentions "store credit". That question is now genuinely answered by the stores page, so oos-04 became "Who designs your shoes?", which is answered from the worn-items page via the word "shoes". After the KB grew, oos-03 "What's the weather in Jakarta tomorrow?" also started returning the stores page via "Jakarta". Both are still failing in the final eval, on purpose: they show the limitation instead of hiding it.
 
 **Why it is still open.** It only reproduces with the deterministic mock model, which always answers from the top hit above the score threshold. A live model is expected to notice that the passage does not answer the question, but that is unproven until a live eval runs. The mock groundedness check does not catch it either: the draft is copied from the passage, so it *is* grounded, just irrelevant. Two candidate fixes were rejected for now. A query-coverage threshold broke real questions ("which couriers do you use"). A relevance question for JEV is the better fix, but it needs a calibrated JEV.
 

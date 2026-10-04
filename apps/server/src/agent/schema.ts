@@ -10,6 +10,9 @@ export const FinalSchema = z.object({
   citations: z.array(z.string().max(60)).max(5).default([]),
   confidence: z.number().min(0).max(1),
   clarification_fields: z.array(z.string().max(40)).max(5).default([]),
+  // Optional follow-up questions for the customer to tap. Accepted loosely and trimmed by the output
+  // guard: a cosmetic extra must never turn a valid answer into a schema failure (defect D-09).
+  suggestions: z.array(z.string().max(500)).max(20).default([]),
 });
 
 export const ToolStepSchema = z.object({
@@ -28,6 +31,19 @@ export const MessageResponseSchema = z.object({
   action: ActionSchema,
   citations: z.array(z.string()),
   escalation_id: z.string().nullable(),
+  suggestions: z.array(z.string()),
+  // Present only when the reply describes the session's verified order. Status data only, no PII.
+  order: z
+    .object({
+      order_id: z.string(),
+      status: z.string(),
+      eta: z.string().nullable(),
+      delivered_at: z.string().nullable(),
+      carrier: z.string().nullable(),
+      tracking_no: z.string().nullable(),
+      items: z.array(z.object({ name: z.string(), size_eu: z.number(), qty: z.number() })),
+    })
+    .nullable(),
   clarification_fields: z.array(z.string()),
   trace_id: z.string(),
   meta: z.object({

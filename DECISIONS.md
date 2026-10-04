@@ -75,10 +75,44 @@ Short ADR format: context, decision, alternatives rejected, consequence. Dates a
 ## ADR-13: Motion shows real data, never decoration
 
 **Context.** The brief asked for motion that represents the agent, the flow, and the process.
-**Decision.** The chat's pipeline panel replays the actual trace of each turn, stage by stage, including retrieval scores and which guard fired. The "How it works" canvas animates the real routes (forced escalation, boundary reply, tool loop) with one packet per turn. Orange always means "a guard fired or a human takes over". All motion respects `prefers-reduced-motion`.
-**Revised.** The first flow diagram was SVG with text inside node rectangles, which failed the overlap rule of the UI audit. It is now drawn on a single canvas, and the packet is painted beneath the nodes so it never covers a label.
+**Decision.** The pipeline panel lights up from the real trace as it streams. Two characters act out each turn: Tapi, the robot agent, narrates each streamed stage and has a scene for every outcome, and Sari, a support agent at her desk, receives every escalation. The scene comes from the structured response (action, guardrails, order card), never from the reply text, so the animation cannot contradict what the system actually did. The "How it works" canvas walks the real routes as footprints. Orange always means "a guard fired or a person takes over". All motion respects `prefers-reduced-motion`, which stops the animation loop and shows one settled frame.
+**Revised, several times.** The first flow diagram was SVG with text inside node boxes and failed the overlap rule; it moved to canvas. The first mascot was a shoe with a face and was rejected as weird; it became a robot. The first human was a grey outline and was rejected as ugly; she became Sari, a full character with a desk, a laptop, and her own reactions. The first animations switched poses instantly; every pose now moves on damped springs with anticipation and follow-through.
 
 ## ADR-14: Eval split into tune and holdout
 
 **Decision.** 10 tune and 30 holdout cases. Only tune failures were used to change rules or templates. The baseline was saved before any change.
 **Consequence.** The holdout pass rate is 96.7% both before and after the fixes, which shows the fixes did not overfit the scoring set. L-01 and L-02 are left open rather than patched with case-specific keywords.
+
+## ADR-15: Server-sent events for each turn
+
+**Decision.** `POST /sessions/:id/messages/stream` sends each trace stage as it is recorded, then the reply. The JSON endpoint stays for scripts and tests.
+**Why.** With a live model, a turn takes seconds. Showing which step it is on (retrieving, verifying, drafting, checking) is more honest than a spinner. It also lets the pipeline and Tapi's speech bubble show real events instead of a replay.
+**Trade-off.** In mock mode the whole turn takes a few milliseconds, so the client releases stage events about 170 ms apart to keep them readable. That pacing is visual only and never delays the server.
+
+## ADR-16: Bring your own key, per conversation, server side
+
+**Context.** Reviewers may want to try a real model without editing files on the server.
+**Decision.** Starting a conversation can carry an OpenAI or Anthropic key and optionally a JEV key. The server checks each with one cheap call and keeps the providers in memory for that one session, for at most an hour. Keys never touch SQLite, logs, traces, or responses, and API-key shapes are redacted from stored text. Key checks are rate limited so the endpoint can't be used as a key-testing oracle. `ALLOW_BYOK=false` disables it.
+**Rejected.** Calling the model from the browser, which exposes the key and skips every guard. Storing keys in the browser.
+
+## ADR-17: Retrieval stays BM25, decided on a benchmark
+
+**Context.** Should this use RAG? It already does: retrieve, answer only from what was retrieved, check the citations. The real question was which retriever.
+**Decision.** Keep BM25 as the default and add a 41-question benchmark with direct and paraphrased wording, run as a test floor. Results: 95% hit@3 for direct wording, 71% for paraphrases.
+**Rejected for now.** Embeddings as the default (needs a key, breaks deterministic mock mode, harder to audit). Long context with the whole KB in the prompt (every page would count as retrieved, so the citation check stops meaning anything).
+**Next.** Embedding re-ranking as a live-mode option, accepted only if paraphrase hit@3 rises on the same benchmark.
+
+## ADR-18: Interactive replies are structured data, guarded like the reply
+
+**Decision.** A reply can carry `suggestions` (follow-up questions) and an `order` card. Suggestions come from the model or from the cited knowledge base page (`asks:` in its frontmatter), and pass the same checks as the reply: no personal data, no unverified order IDs, no claimed actions. The order card appears only when the reply describes the session's verified order, and it carries status data only.
+**Revised.** The first schema made suggestions strict, so a model offering four instead of three lost its whole valid answer (D-09). The field is now loose, and the guard trims it.
+
+## ADR-19: Natural replies without loosening control
+
+**Decision.** Fixed replies are written to sound like a person and to be specific (what was passed on, to whom, by when, and the ticket number). Requests for a person are always honoured. Thanks and goodbyes get a short close. Short follow-ups borrow the previous question's topic for retrieval. A message with two questions gets both answered from two pages, using a real `search_kb` step. The mock answers extractively: it picks the sentences, or the table row, that best match the question.
+**Evidence.** The 52-row scenario matrix (`evidence/scenarios.md`) covers these categories, with 50/52 on its first run and 52/52 after two general fixes.
+
+## ADR-20: No voice (ElevenLabs)
+
+**Decision.** Not added.
+**Why.** It is outside what this prototype is judged on, and it would add an external dependency, cost, latency, and voice recordings as a new kind of personal data. If it were added later, it would be text-to-speech of the final, already-guarded reply only, behind the same per-session key pattern, with the browser's built-in speech as the keyless fallback.

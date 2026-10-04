@@ -13,6 +13,7 @@ import type { DecisionProvider } from "../providers/decision/types.ts";
 import type { LLMProvider } from "../providers/llm/types.ts";
 import { LiveConfigSchema, bindProviders, buildLiveProviders, providersFor } from "../providers/runtime.ts";
 import type { Bm25Index } from "../retrieval/bm25.ts";
+import type { KbDoc } from "../retrieval/kb.ts";
 
 const SessionId = z.string().regex(/^ses_[a-f0-9]{20}$/);
 const MessageBody = z.object({ message: z.string().trim().min(1).max(config.limits.maxMessageChars) });
@@ -44,6 +45,8 @@ export type AppDeps = {
   llm: LLMProvider;
   decision: DecisionProvider;
   rateLimiter?: RateLimiter;
+  // The public knowledge base, for clickable citations.
+  kb?: KbDoc[];
   // Injected in tests so live-key validation never leaves the process.
   liveFetch?: typeof fetch;
 };
@@ -206,6 +209,23 @@ export function createApp(deps: AppDeps) {
       )
       .all();
     return c.json({ sessions: rows });
+  });
+
+  // Citations are clickable: the client shows the exact source passage the answer relied on.
+  api.get("/kb", (c) =>
+    c.json({
+      docs: (deps.kb ?? []).map((d) => ({
+        id: d.id,
+        title: d.title,
+        updated_at: d.updated_at,
+        status: d.status,
+      })),
+    }),
+  );
+  api.get("/kb/:id", (c) => {
+    const d = (deps.kb ?? []).find((x) => x.id === c.req.param("id"));
+    if (!d) return c.json({ error: "not_found" }, 404);
+    return c.json({ id: d.id, title: d.title, updated_at: d.updated_at, status: d.status, body: d.body });
   });
 
   api.get("/escalations", (c) => {

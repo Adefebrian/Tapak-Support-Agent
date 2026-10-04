@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { MASCOT_LABEL, Mascot, SCENES } from "../components/Mascot.tsx";
 
 type NodeId = "customer" | "input" | "jev" | "retrieval" | "model" | "tools" | "guard" | "reply" | "queue";
 type Pt = [number, number];
@@ -339,15 +340,30 @@ function FlowDiagram({ scenario, onDone }: { scenario: Scenario; onDone: () => v
       ctx.textAlign = "center";
       for (const [x, y, text] of L.labels) ctx.fillText(text, x, y);
 
-      if (!reduce && t < 1) {
-        const [px, py] = pointAt(pts, times, t);
-        ctx.beginPath();
-        ctx.arc(px, py, 7, 0, Math.PI * 2);
-        ctx.fillStyle = C.orange;
-        ctx.fill();
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = C.white;
-        ctx.stroke();
+      // The message walks the route as footprints ("tapak"): left, right, left, fading behind it.
+      if (!reduce) {
+        const step = 16;
+        const walked = t * len;
+        const firstShown = Math.max(0, walked - step * 9);
+        for (let d = Math.floor(firstShown / step) * step; d <= walked; d += step) {
+          const k = d / len;
+          const [x, y] = pointAt(pts, times, k);
+          const [x2, y2] = pointAt(pts, times, Math.min(1, k + 0.002));
+          const ang = Math.atan2(y2 - y, x2 - x);
+          const side = Math.round(d / step) % 2 === 0 ? 1 : -1;
+          const age = (walked - d) / (step * 9);
+          ctx.save();
+          ctx.translate(x - Math.sin(ang) * 4.5 * side, y + Math.cos(ang) * 4.5 * side);
+          ctx.rotate(ang + Math.PI / 2);
+          ctx.globalAlpha = t >= 1 ? 0 : Math.max(0, 1 - age);
+          ctx.fillStyle = C.orange;
+          ctx.beginPath();
+          ctx.ellipse(0, -2.5, 3.2, 4.6, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, 5, 2.4, 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.globalAlpha = 1;
       }
 
       for (const id of Object.keys(L.nodes) as NodeId[]) {
@@ -388,7 +404,7 @@ function FlowDiagram({ scenario, onDone }: { scenario: Scenario; onDone: () => v
       cancelAnimationFrame(raf);
       clearTimeout(raf);
     };
-  }, [L, scenario, pts, times, arriveAt, duration, reduce, onDone]);
+  }, [L, scenario, pts, times, len, arriveAt, duration, reduce, onDone]);
 
   return (
     <canvas
@@ -436,9 +452,9 @@ export function SystemView() {
   );
 
   return (
-    <div>
+    <div className="page">
       <div className="page-head">
-        <div>
+        <div className="page-head-text">
           <h1 className="h1">How a turn flows</h1>
           <p className="lede">
             One agent, one manual tool loop, between two deterministic guards. The model and JEV can only make
@@ -485,6 +501,29 @@ export function SystemView() {
           </motion.p>
         </section>
 
+        <section className="panel" aria-label="How Tapi reacts">
+          <div className="panel-head">
+            <div className="panel-head-text">
+              <h2 className="panel-title">How Tapi reacts</h2>
+              <p className="panel-sub">
+                Each outcome has its own scene, chosen from the structured response, never from the reply
+                text.
+              </p>
+            </div>
+          </div>
+          <div className="scene-grid">
+            {SCENES.map((sc) => (
+              <figure key={sc.state} className="scene">
+                <Mascot state={sc.state} bubble={null} label={MASCOT_LABEL[sc.state]} loop />
+                <figcaption className="scene-caption">
+                  <strong>{sc.title}</strong>
+                  <span className="muted small">{sc.trigger}</span>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+
         <section className="panel" aria-label="Control boundary">
           <div className="panel-head">
             <div>
@@ -495,7 +534,7 @@ export function SystemView() {
             </div>
           </div>
           <div className="table-wrap">
-            <table>
+            <table className="stack-table">
               <thead>
                 <tr>
                   <th>Situation</th>
@@ -506,13 +545,15 @@ export function SystemView() {
               <tbody>
                 {BOUNDARY.map(([a, b, c]) => (
                   <tr key={a}>
-                    <td>{a}</td>
-                    <td>
+                    <td data-label="Situation">{a}</td>
+                    <td data-label="Decision">
                       <span className={`chip ${b.startsWith("Automatic") ? "chip-ink" : "chip-orange"}`}>
                         {b}
                       </span>
                     </td>
-                    <td className="muted">{c}</td>
+                    <td className="muted" data-label="Enforced by">
+                      {c}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -2,6 +2,7 @@
 id: kb-payment-010
 title: Payment methods
 updated_at: 2026-09-01
+asks: Can I pay with a gift card? | How fast is payment confirmed?
 ---
 # Payment methods
 
