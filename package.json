@@ -1,0 +1,22 @@
+{
+  "name": "tapak-support-agent",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/server", "apps/client"],
+  "scripts": {
+    "setup": "bun run data/seed.ts && bun run --cwd apps/client build",
+    "dev": "bun run --cwd apps/client build && bun --watch apps/server/src/index.ts",
+    "start": "bun apps/server/src/index.ts",
+    "build": "bun run --cwd apps/client build",
+    "test": "bun test apps/server/test",
+    "eval": "bun run eval/run.ts",
+    "typecheck": "tsc -p apps/server --noEmit && tsc -p apps/client --noEmit",
+    "lint": "biome check .",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "latest",
+    "typescript": "^5.6.0"
+  }
+}

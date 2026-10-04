@@ -1,0 +1,9 @@
+{
+  "name": "@tapak/server",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "hono": "^4.6.0",
+    "zod": "^3.23.8"
+  }
+}

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+target/
+apps/server/public/
+data/*.db
+data/*.db-*
+.env
+.DS_Store
+.jal/
+evidence/runs/
+apps/native/src-tauri/gen/
