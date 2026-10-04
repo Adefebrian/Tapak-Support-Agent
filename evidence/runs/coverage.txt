@@ -26,7 +26,7 @@ All files                                        |   96.57 |   94.71 |
  eval/retrieval.ts                               |   78.57 |   47.37 | 38-60,62-68
 -------------------------------------------------|---------|---------|-------------------
 
- 154 pass
+ 155 pass
  0 fail
- 387 expect() calls
-Ran 154 tests across 9 files. [172.00ms]
+ 403 expect() calls
+Ran 155 tests across 9 files. [219.00ms]

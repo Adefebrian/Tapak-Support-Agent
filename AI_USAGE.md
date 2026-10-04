@@ -8,6 +8,8 @@ I built this project with an AI coding assistant (Claude, in Claude Code) as a p
 - First drafts of the agent loop, policy engine, tools, providers, eval harness, and the 40 eval cases.
 - The web client and its motion design.
 - First drafts of these documents.
+- The product requirements (`docs/PRD.md`) were drafted with Claude; I then implemented them and revised them where the build showed something different (for example Bun.build instead of Vite, ADR-10).
+- The tool was Claude Code. The `.claude/` folder holds only `launch.json`, the configuration Claude Code uses to start the dev server (`bun apps/server/src/index.ts` on port 8787) for its preview window. It contains no prompts, skills, or keys.
 
 ## Rejected or corrected output
 

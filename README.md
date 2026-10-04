@@ -17,12 +17,16 @@ bun run dev       # http://localhost:8787
 By default it runs in **mock mode**: a deterministic stand-in for the model, no JEV. Every guard, tool, schema check, and trace still runs for real, so the whole system can be tested without a key.
 
 ```bash
-bun run test                         # 154 tests, no keys, 96.6% line coverage
+bun run test                         # 155 tests, no keys, 96.6% line coverage
 bun run eval --llm=mock --jev=off    # 40 labelled cases -> evidence/runs/
 bun run eval --jev=down              # simulates a JEV outage to show fail-closed behaviour
 bun run eval:retrieval               # retrieval benchmark: hit@1 / hit@3, direct vs paraphrased
 bun run package                      # dist/tapak-support-agent.zip from the committed tree
 ```
+
+### Public demo
+
+A demo runs at https://tapak.adefebrian.com. It starts every conversation in mock mode, so it works without a key. Live mode (bring your own key) is enabled there: choose Live in the mode dialog and paste your own OpenAI or Anthropic key. The key is used for that one conversation only, held in the server's memory for at most an hour, and never stored. Limits are the same as below: 20 messages a minute per conversation, and 10 key checks a minute for the whole server.
 
 ### Trying it with a real model (live mode)
 
@@ -95,7 +99,7 @@ Limits: 2,000 characters per message, 20 messages a minute per session, the last
 
 ### Desktop and Android
 
-`apps/native` wraps the same web build with Tauri 2. It is a thin client: no agent logic and no keys inside, and the server address is set in the app. The macOS build was made and tested locally. Windows, Linux, and the Android debug APK build in `.github/workflows/native.yml` but haven't been run yet.
+`apps/native` wraps the same web build with Tauri 2. It is a thin client: no agent logic and no keys inside, and the server address is set in the app. All four platforms (macOS universal `.dmg`, Windows `.msi` and `.exe`, Linux `.AppImage` and `.deb`, and a signed Android `.apk` for arm64 and x86_64) are built in CI by `.github/workflows/native.yml` and attached to the GitHub release. macOS was tested locally: a universal build of the same source launched and connected to the server. Windows, Linux, and Android have not yet been smoke-tested on a real device.
 
 ## Assumptions
 
@@ -134,7 +138,7 @@ To detect it, I'd watch empty-retrieval, clarify, and escalation rates from `/me
 - **Rules on both sides of the model, not prompt instructions.** Every defect I found was caught by a deterministic test or an eval check, not by reading prompts.
 - **BM25 instead of embeddings, for now.** This is still RAG: retrieve, then answer only from what was retrieved, with citations checked. With 21 short pages, lexical scores are cheap, need no key, and show up in the trace. The benchmark shows the cost (71% hit@3 on paraphrases), which is why the next step is embedding re-ranking as a live-mode option rather than a rewrite. Putting the whole knowledge base in the prompt would avoid misses but break the citation check, since every page would count as retrieved.
 - **SQLite instead of Postgres and Redis.** The reviewer runs one command.
-- **A thin Tauri client instead of a local agent.** A key inside a binary can be extracted, and a guard on the client can be skipped. The macOS app is 3.4 MB.
+- **A thin Tauri client instead of a local agent.** A key inside a binary can be extracted, and a guard on the client can be skipped. The macOS download is a 3.5 MB universal `.dmg`.
 - **JEV as an advisor, never a gate.** It reads untrusted text. When I simulated it timing out, the system stayed safe (zero leaks) and became useless (everything escalated). That's why it's off by default until it's calibrated.
 - **Bring-your-own-key per conversation, not keys in the browser.** The browser never calls a model provider. The key goes to the server once, lives in memory for one conversation, and the same guards apply.
 - **No voice (ElevenLabs).** It's outside what's being judged, and it would add an external dependency, cost, and a new kind of personal data.
@@ -147,9 +151,9 @@ A few others. A reply template used `TPK-10001` as an "example" order ID, which 
 
 ### 5. What evidence makes you trust the system today, what remains unproven, and what would you improve first with one additional day?
 
-What I trust: zero leaks across the 40-case eval, the 52-case scenario matrix, and 154 tests, enforced in code that no model output can get around. Escalation recall is 100% on the cases that must escalate. Every turn can be rebuilt from its trace. The fail-closed path is measured, not assumed. The UI passes a mechanical layout audit on every screen at five widths, and the macOS app builds and talks to the server.
+What I trust: zero leaks across the 40-case eval, the 52-case scenario matrix, and 155 tests, enforced in code that no model output can get around. Escalation recall is 100% on the cases that must escalate. Every turn can be rebuilt from its trace. The fail-closed path is measured, not assumed. The UI passes a mechanical layout audit on every screen at five widths, all four native apps build in CI, and the macOS app launches and talks to the server.
 
-What's unproven: how a real model actually answers, whether JEV adds anything and where its thresholds should sit, how the agent holds up against cleverer injection and paraphrasing, and the Windows, Linux, and Android builds.
+What's unproven: how a real model actually answers, whether JEV adds anything and where its thresholds should sit, how the agent holds up against cleverer injection and paraphrasing, and whether the Windows, Linux, and Android apps (built in CI) work on a real device.
 
 With one more day, I'd run the live eval with `gpt-4o-mini` and a JEV ablation, then calibrate both thresholds against the labels. Then I'd add embedding re-ranking and a relevance check in live mode and see whether paraphrase hit@3 actually moves. And I'd grow the eval set from anonymised real conversations, keeping a strict holdout.
 
@@ -158,6 +162,7 @@ With one more day, I'd run the live eval with `gpt-4o-mini` and a JEV ablation, 
 | The brief asks for | Where |
 | --- | --- |
 | Complete source code and how to run it | `apps/`, `kb/`, `data/`, `eval/`, and Setup above |
+| The original product requirements | `docs/PRD.md` |
 | README: setup, architecture, assumptions, known limitations | This file |
 | Decision log | `DECISIONS.md` |
 | Testing evidence, including failures | `evidence/`: baseline before tuning, final eval, ablation, retrieval benchmark, scenario matrix (first run with its failures, and final), coverage, raw runs |

@@ -6,7 +6,7 @@ Same 40 cases, same mock LLM, decision layer swapped.
 | --- | --- | --- | --- | --- | --- | --- |
 | [off](runs/eval-final-jev-off-2026-10-04T11-03-58-615Z.md) | `NoopProvider` | 0 | 100% | 0% | 95% | n/a |
 | [mock](runs/eval-final-jev-mock-2026-10-04T11-03-58-675Z.md) | `MockJevProvider` | 0 | 100% | 0% | 95% | 0% |
-| [down](runs/eval-ablation-jev-down-2026-10-04T11-03-58-728Z.md) | JEV enabled, every call times out | 0 | 100% | **100%** | lower, by design | n/a |
+| [down](runs/eval-ablation-jev-down-2026-10-04T11-03-58-728Z.md) | JEV enabled, every call times out | 0 | 100% | **100%** | 32.5% | n/a |
 
 ## What this shows
 

@@ -27,4 +27,5 @@ Configuration: mock model, JEV off (the shipped default), 40 cases (10 tune, 30 
 - [Scenario matrix](scenarios.md): 52 varied phrasings across 10 categories, 50/52 on the first run, 52/52 after fixing D-10 and a vocabulary gap.
 - [Retrieval benchmark](retrieval.md): 95% hit@3 on direct wording, 71% on paraphrases.
 - [JEV ablation](ablation-jev.md), including a simulated outage.
-- [Coverage](runs/coverage.txt): 154 tests, 96.6% of lines.
+- [Git SHAs in the raw runs](git-shas.md): why some run files name a commit that no longer exists.
+- [Coverage](runs/coverage.txt): 155 tests, 96.6% of lines.

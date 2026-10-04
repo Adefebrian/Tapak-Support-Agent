@@ -65,7 +65,7 @@ Short ADR format: context, decision, alternatives rejected, consequence. Dates a
 
 **Decision.** The Tauri app bundles only the web build, has no commands or plugins, and uses a CSP limiting scripts to `self`. The backend URL is configurable in Settings. CORS allows the Tauri origins explicitly.
 **Rejected.** An agent running inside the app: a bundled key can be extracted, and a client-side guardrail can be bypassed. Electron: larger binary, no Android.
-**Consequence.** macOS release `.app` is 3.37 MiB. Other platforms build in CI and were not run locally.
+**Consequence.** The macOS download is a 3.5 MB universal `.dmg`. All four platforms build in CI (`native.yml`); macOS was tested locally, while Windows, Linux, and Android have not yet been smoke-tested on a real device.
 
 ## ADR-12: Self-hosted fonts, no third-party requests from the UI
 

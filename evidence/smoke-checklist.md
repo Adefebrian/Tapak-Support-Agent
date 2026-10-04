@@ -25,7 +25,7 @@ Run 2026-10-04 on macOS (Apple Silicon), Bun 1.3.14, server in mock mode.
 
 | Check | Result |
 | --- | --- |
-| macOS: `bunx tauri build --bundles app` in `apps/native` | pass, `Tapak Support.app` 3.37 MiB, release profile. Built before the final UI changes; the Tauri config has not changed since, and the app loads whatever web build it is given |
+| macOS: `bunx tauri build --target universal-apple-darwin --bundles app,dmg` in `apps/native`, latest UI | pass, universal binary (x86_64 and arm64), `.dmg` 3.5 MB, new app icon confirmed inside the bundle |
 | macOS: app launches and reaches the local backend (`tauri://localhost` origin passes CORS) | pass, verified by a new row in `sessions` |
-| Windows (.msi, .exe), Linux (.AppImage, .deb), universal .dmg | via `.github/workflows/native.yml`, not run locally |
-| Android debug APK | via `native.yml` (`android` job), not run locally; emulator uses `http://10.0.2.2:8787`, cleartext enabled for that in CI |
+| Windows (.msi, .exe), Linux (.AppImage, .deb), universal .dmg | built successfully in CI (`native.yml` runs 37199216968 and 37200057045); not smoke-tested on a real Windows or Linux machine. The CI-built `.dmg` itself was not opened; the local universal build of the same source was |
+| Android APK | built successfully in CI as a signed release APK for arm64 and x86_64 (10.3 MB; APK signature v2 and v3 verified by `apksigner`; plain HTTP enabled for the release build so the emulator can reach `http://10.0.2.2:8787`). Not installed on a device or emulator |
