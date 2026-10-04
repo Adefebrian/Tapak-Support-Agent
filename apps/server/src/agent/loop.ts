@@ -63,7 +63,11 @@ function templated(reply: string, action: Action, fields: string[] = [], citatio
 export class Agent {
   constructor(private readonly deps: AgentDeps) {}
 
-  async handleTurn(sessionId: string, message: string): Promise<MessageResponse> {
+  async handleTurn(
+    sessionId: string,
+    message: string,
+    onEvent?: ConstructorParameters<typeof TurnTrace>[3],
+  ): Promise<MessageResponse> {
     const { db } = this.deps;
     const traceId = newTraceId();
     const turn =
@@ -72,7 +76,7 @@ export class Agent {
           .query("SELECT COUNT(*) AS n FROM messages WHERE session_id = ? AND role = 'user'")
           .get(sessionId) as { n: number }
       ).n + 1;
-    const trace = new TurnTrace(traceId, sessionId, turn);
+    const trace = new TurnTrace(traceId, sessionId, turn, onEvent);
     const guards: GuardHit[] = [];
     const session = db
       .query(

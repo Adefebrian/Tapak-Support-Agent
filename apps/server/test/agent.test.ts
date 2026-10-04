@@ -223,6 +223,13 @@ describe("regressions found by eval (evidence/DEFECTS.md)", () => {
     for (const t of texts) for (const id of extractOrderIds(t)) expect(ids.has(id)).toBe(false);
   });
 
+  test("D-06: a care question that mentions 'my shoes' is not treated as an order lookup", async () => {
+    const h = harness();
+    const r = await h.agent.handleTurn(h.session(), "My shoes look dirty, how do I clean suede?");
+    expect(r.action).toBe("answer");
+    expect(r.citations).toContain("kb-care-007");
+  });
+
   test("D-05: injection without an order lookup gets the boundary reply, not a KB answer", async () => {
     const h = harness();
     const r = await h.agent.handleTurn(

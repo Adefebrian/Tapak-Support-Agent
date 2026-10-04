@@ -76,8 +76,10 @@ const ACTION_VERB =
   /\b(refund|cancel|change (my |the )?(delivery |shipping )?address|update (my |the )?address|exchange|swap|replace|replacement|return (it|them|this|these|my)|send (it|them) back|money back|reimburse|compensat)/i;
 const FIRST_PERSON_DEMAND =
   /\b(i want|i'd like|i would like|i need|please|can you|could you|i demand|give me|process|issue|start (a|my))\b/i;
+// "my shoes" alone is not order talk ("my shoes look dirty" is a care question, defect D-06);
+// it only counts when paired with a delivery verb.
 const ORDER_TALK =
-  /\b(my order|my package|my parcel|my shoes|order status|where is|where's|track(ing)?|has(n't| not) arrived|not arrived|didn't arrive|still waiting|not (yet )?(here|received)|when will (it|my)|belum sampai|shipment|delivered\?)/i;
+  /\b(my order|my package|my parcel|order status|where is|where's|track(ing)?|(has|have)(n't| not) (arrived|come)|not arrived|didn't (arrive|come)|never (arrived|came)|still waiting|not (yet )?(here|received)|when will (it|my|they)|belum sampai|shipment|delivered\?)/i;
 const GREETING_ONLY = /^\s*(hi|hello|hey|halo|good (morning|afternoon|evening))[\s!.]*$/i;
 const NEGATIVE =
   /\b(angry|upset|terrible|awful|disappointed|frustrated|annoyed|horrible|garbage|trash|wtf)\b/i;

@@ -25,15 +25,19 @@ export class TurnTrace {
     readonly traceId: string,
     readonly sessionId: string,
     readonly turn: number,
+    // Optional live listener (SSE). Receives the same redacted event that is stored.
+    private readonly onEvent?: (e: TraceEvent & { trace_id: string; turn: number }) => void,
   ) {}
 
   add(stage: Stage, payload: Record<string, unknown>, latencyMs = 0): void {
-    this.events.push({
+    const e: TraceEvent = {
       stage,
       payload: redactDeep(payload),
       latency_ms: Math.round(latencyMs),
       at: Math.round(performance.now() - this.t0),
-    });
+    };
+    this.events.push(e);
+    this.onEvent?.({ ...e, trace_id: this.traceId, turn: this.turn });
   }
 
   elapsed(): number {
